@@ -4,8 +4,19 @@ import { useNavigate } from 'react-router-dom';
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
   const [stores, setStores] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isPlanFormOpen, setIsPlanFormOpen] = useState(false);
+  const [planForm, setPlanForm] = useState({
+    name: 'Free',
+    price: 0,
+    maxProducts: 50,
+    customDomain: false,
+    analytics: false,
+    themes: false,
+    prioritySupport: false
+  });
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -26,11 +37,18 @@ const SuperAdminMainpanel = () => {
         const response = await fetch(`${API_BASE_URL}/data`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        const responsePlans = await fetch(`${API_BASE_URL}/plans`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
         if (response.ok) {
           const data = await response.json();
           setUsers(data.users || []);
           setStores(data.stores || []);
+          if (responsePlans.ok) {
+            setPlans(await responsePlans.json());
+          }
         } else {
           setError('Failed to fetch platform data. Please relogin.');
         }
@@ -43,6 +61,63 @@ const SuperAdminMainpanel = () => {
 
     fetchDashboardData();
   }, [navigate]);
+
+  const handleSavePlan = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      
+      const response = await fetch(`${API_BASE_URL}/plans`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: planForm.name,
+          price: Number(planForm.price),
+          features: {
+            maxProducts: Number(planForm.maxProducts),
+            customDomain: planForm.customDomain,
+            analytics: planForm.analytics,
+            themes: planForm.themes,
+            prioritySupport: planForm.prioritySupport
+          }
+        })
+      });
+
+      if (response.ok) {
+        const savedPlan = await response.json();
+        setPlans(prev => {
+          const exists = prev.find(p => p.name === savedPlan.name);
+          if (exists) return prev.map(p => p.name === savedPlan.name ? savedPlan : p);
+          return [...prev, savedPlan];
+        });
+        setIsPlanFormOpen(false);
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to save plan');
+      }
+    } catch (err) {
+      setError('Network error while saving plan');
+    }
+  };
+
+  const editPlan = (plan) => {
+    setPlanForm({
+      name: plan.name,
+      price: plan.price,
+      maxProducts: plan.features.maxProducts,
+      customDomain: plan.features.customDomain,
+      analytics: plan.features.analytics,
+      themes: plan.features.themes,
+      prioritySupport: plan.features.prioritySupport
+    });
+    setIsPlanFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-xl text-slate-500 bg-slate-50">Loading Platform Data...</div>;
 
@@ -70,6 +145,89 @@ const SuperAdminMainpanel = () => {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">Active Stores</h3>
             <p className="text-5xl font-extrabold text-green-600">{stores.length}</p>
+          </div>
+        </div>
+
+        {/* Subscription Plans Management */}
+        <div className="mb-10 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-slate-800">Subscription Plans</h2>
+            <button 
+              onClick={() => {
+                setPlanForm({ name: 'Free', price: 0, maxProducts: 50, customDomain: false, analytics: false, themes: false, prioritySupport: false });
+                setIsPlanFormOpen(!isPlanFormOpen);
+              }} 
+              className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+            >
+              {isPlanFormOpen ? 'Cancel' : '+ Add / Edit Plan'}
+            </button>
+          </div>
+
+          {isPlanFormOpen && (
+            <form onSubmit={handleSavePlan} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Plan Name</label>
+                  <select value={planForm.name} onChange={e => setPlanForm({...planForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="Free">Free</option>
+                    <option value="Pro">Pro</option>
+                    <option value="Premium">Premium</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Monthly Price (₹)</label>
+                  <input type="number" value={planForm.price} onChange={e => setPlanForm({...planForm, price: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Max Products Allowed</label>
+                  <input type="number" value={planForm.maxProducts} onChange={e => setPlanForm({...planForm, maxProducts: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.customDomain} onChange={e => setPlanForm({...planForm, customDomain: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Custom Domain
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.analytics} onChange={e => setPlanForm({...planForm, analytics: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Analytics
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.themes} onChange={e => setPlanForm({...planForm, themes: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Premium Themes
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.prioritySupport} onChange={e => setPlanForm({...planForm, prioritySupport: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Priority Support
+                </label>
+              </div>
+              <button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
+                Save Plan Configuration
+              </button>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {plans.map(plan => (
+              <div key={plan._id} className="border border-slate-200 rounded-xl p-6 hover:shadow-md transition">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
+                  <button onClick={() => editPlan(plan)} className="text-sm text-blue-600 font-bold hover:underline">Edit</button>
+                </div>
+                <p className="text-3xl font-extrabold text-slate-900 mb-4">₹{plan.price}<span className="text-sm font-medium text-slate-500">/mo</span></p>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li className="flex items-center gap-2">✓ Up to {plan.features.maxProducts} Products</li>
+                  <li className="flex items-center gap-2">{plan.features.customDomain ? '✓' : '✕'} Custom Domain</li>
+                  <li className="flex items-center gap-2">{plan.features.analytics ? '✓' : '✕'} Analytics</li>
+                  <li className="flex items-center gap-2">{plan.features.themes ? '✓' : '✕'} Premium Themes</li>
+                  <li className="flex items-center gap-2">{plan.features.prioritySupport ? '✓' : '✕'} Priority Support</li>
+                </ul>
+              </div>
+            ))}
+            {plans.length === 0 && !isPlanFormOpen && (
+              <div className="col-span-3 text-center py-8 text-slate-500">No plans configured yet. Click "Add / Edit Plan" to set them up.</div>
+            )}
           </div>
         </div>
 
@@ -117,6 +275,7 @@ const SuperAdminMainpanel = () => {
                   <th className="p-4 font-bold">URL</th>
                   <th className="p-4 font-bold">Owner ID</th>
                   <th className="p-4 font-bold">Status</th>
+                  <th className="p-4 font-bold">Plan</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,9 +294,17 @@ const SuperAdminMainpanel = () => {
                         {store.status || 'active'}
                       </span>
                     </td>
+                    <td className="p-4">
+                      <span className="block font-semibold text-slate-800">
+                        {plans.find(p => p._id === store.planId)?.name || 'Free'}
+                      </span>
+                      <span className={`text-xs font-medium capitalize ${store.subscriptionStatus === 'active' ? 'text-green-600' : store.subscriptionStatus === 'expired' ? 'text-red-500' : 'text-orange-500'}`}>
+                        {store.subscriptionStatus || 'trial'}
+                      </span>
+                    </td>
                   </tr>
                 ))}
-                {stores.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-slate-500 font-medium">No stores created yet.</td></tr>}
+                {stores.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-500 font-medium">No stores created yet.</td></tr>}
               </tbody>
             </table>
           </div>
