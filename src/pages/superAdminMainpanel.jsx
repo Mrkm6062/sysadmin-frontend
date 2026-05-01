@@ -20,6 +20,7 @@ const SuperAdminMainpanel = () => {
     basicAnalytics: false,
     advanceAnalytics: false,
     whatsappOrderButton: false,
+    sevenDaysTrial: true,
     themes: false,
     prioritySupport: false
   });
@@ -94,6 +95,7 @@ const SuperAdminMainpanel = () => {
             basicAnalytics: planForm.basicAnalytics,
             advanceAnalytics: planForm.advanceAnalytics,
             whatsappOrderButton: planForm.whatsappOrderButton,
+            sevenDaysTrial: planForm.sevenDaysTrial,
             themes: planForm.themes,
             prioritySupport: planForm.prioritySupport
           }
@@ -130,6 +132,7 @@ const SuperAdminMainpanel = () => {
       basicAnalytics: plan.features.basicAnalytics || false,
       advanceAnalytics: plan.features.advanceAnalytics || false,
       whatsappOrderButton: plan.features.whatsappOrderButton || false,
+      sevenDaysTrial: plan.features.sevenDaysTrial ?? true,
       themes: plan.features.themes,
       prioritySupport: plan.features.prioritySupport
     });
@@ -172,7 +175,7 @@ const SuperAdminMainpanel = () => {
             <h2 className="text-xl font-bold text-slate-800">Subscription Plans</h2>
             <button 
               onClick={() => {
-                setPlanForm({ name: 'Starter', price: 0, maxProducts: 50, storeLimit: 1, storageLimit: 500, customDomain: false, freeSsl: false, securityHeaders: false, basicAnalytics: false, advanceAnalytics: false, whatsappOrderButton: false, themes: false, prioritySupport: false });
+                setPlanForm({ name: 'Starter', price: 0, maxProducts: 50, storeLimit: 1, storageLimit: 500, customDomain: false, freeSsl: false, securityHeaders: false, basicAnalytics: false, advanceAnalytics: false, whatsappOrderButton: false, sevenDaysTrial: true, themes: false, prioritySupport: false });
                 setIsPlanFormOpen(!isPlanFormOpen);
               }} 
               className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
@@ -240,6 +243,10 @@ const SuperAdminMainpanel = () => {
                   WhatsApp Order Button
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.sevenDaysTrial} onChange={e => setPlanForm({...planForm, sevenDaysTrial: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  7-Days Trial
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
                   <input type="checkbox" checked={planForm.themes} onChange={e => setPlanForm({...planForm, themes: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
                   Premium Themes
                 </label>
@@ -272,6 +279,7 @@ const SuperAdminMainpanel = () => {
                   <li className="flex items-center gap-2">{plan.features.basicAnalytics ? '✓' : '✕'} Basic Analytics</li>
                   <li className="flex items-center gap-2">{plan.features.advanceAnalytics ? '✓' : '✕'} Advance Analytics</li>
                   <li className="flex items-center gap-2">{plan.features.whatsappOrderButton ? '✓' : '✕'} WhatsApp Order Button</li>
+                  <li className="flex items-center gap-2">{plan.features.sevenDaysTrial ? '✓' : '✕'} 7-Days Trial</li>
                   <li className="flex items-center gap-2">{plan.features.themes ? '✓' : '✕'} Premium Themes</li>
                   <li className="flex items-center gap-2">{plan.features.prioritySupport ? '✓' : '✕'} Priority Support</li>
                 </ul>
