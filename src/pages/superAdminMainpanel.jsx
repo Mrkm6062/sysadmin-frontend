@@ -9,11 +9,17 @@ const SuperAdminMainpanel = () => {
   const [error, setError] = useState('');
   const [isPlanFormOpen, setIsPlanFormOpen] = useState(false);
   const [planForm, setPlanForm] = useState({
-    name: 'Free',
+    name: 'Starter',
     price: 0,
     maxProducts: 50,
+    storeLimit: 1,
+    storageLimit: 500,
     customDomain: false,
-    analytics: false,
+    freeSsl: false,
+    securityHeaders: false,
+    basicAnalytics: false,
+    advanceAnalytics: false,
+    whatsappOrderButton: false,
     themes: false,
     prioritySupport: false
   });
@@ -80,8 +86,14 @@ const SuperAdminMainpanel = () => {
           price: Number(planForm.price),
           features: {
             maxProducts: Number(planForm.maxProducts),
+            storeLimit: Number(planForm.storeLimit),
+            storageLimit: Number(planForm.storageLimit),
             customDomain: planForm.customDomain,
-            analytics: planForm.analytics,
+            freeSsl: planForm.freeSsl,
+            securityHeaders: planForm.securityHeaders,
+            basicAnalytics: planForm.basicAnalytics,
+            advanceAnalytics: planForm.advanceAnalytics,
+            whatsappOrderButton: planForm.whatsappOrderButton,
             themes: planForm.themes,
             prioritySupport: planForm.prioritySupport
           }
@@ -110,8 +122,14 @@ const SuperAdminMainpanel = () => {
       name: plan.name,
       price: plan.price,
       maxProducts: plan.features.maxProducts,
+      storeLimit: plan.features.storeLimit || 1,
+      storageLimit: plan.features.storageLimit || 500,
       customDomain: plan.features.customDomain,
-      analytics: plan.features.analytics,
+      freeSsl: plan.features.freeSsl || false,
+      securityHeaders: plan.features.securityHeaders || false,
+      basicAnalytics: plan.features.basicAnalytics || false,
+      advanceAnalytics: plan.features.advanceAnalytics || false,
+      whatsappOrderButton: plan.features.whatsappOrderButton || false,
       themes: plan.features.themes,
       prioritySupport: plan.features.prioritySupport
     });
@@ -154,7 +172,7 @@ const SuperAdminMainpanel = () => {
             <h2 className="text-xl font-bold text-slate-800">Subscription Plans</h2>
             <button 
               onClick={() => {
-                setPlanForm({ name: 'Free', price: 0, maxProducts: 50, customDomain: false, analytics: false, themes: false, prioritySupport: false });
+                setPlanForm({ name: 'Starter', price: 0, maxProducts: 50, storeLimit: 1, storageLimit: 500, customDomain: false, freeSsl: false, securityHeaders: false, basicAnalytics: false, advanceAnalytics: false, whatsappOrderButton: false, themes: false, prioritySupport: false });
                 setIsPlanFormOpen(!isPlanFormOpen);
               }} 
               className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
@@ -169,7 +187,8 @@ const SuperAdminMainpanel = () => {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Plan Name</label>
                   <select value={planForm.name} onChange={e => setPlanForm({...planForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="Free">Free</option>
+                    <option value="Starter">Starter</option>
+                    <option value="Basic">Basic</option>
                     <option value="Pro">Pro</option>
                     <option value="Premium">Premium</option>
                   </select>
@@ -183,6 +202,17 @@ const SuperAdminMainpanel = () => {
                   <input type="number" value={planForm.maxProducts} onChange={e => setPlanForm({...planForm, maxProducts: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Max Stores Allowed</label>
+                  <input type="number" value={planForm.storeLimit} onChange={e => setPlanForm({...planForm, storeLimit: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required min="1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Storage Limit (in MB)</label>
+                  <input type="number" value={planForm.storageLimit} onChange={e => setPlanForm({...planForm, storageLimit: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required placeholder="500 = 500MB, 2000 = 2GB" min="1" />
+                </div>
+              </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
@@ -190,8 +220,24 @@ const SuperAdminMainpanel = () => {
                   Custom Domain
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
-                  <input type="checkbox" checked={planForm.analytics} onChange={e => setPlanForm({...planForm, analytics: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
-                  Analytics
+                  <input type="checkbox" checked={planForm.freeSsl} onChange={e => setPlanForm({...planForm, freeSsl: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Free SSL/TLS HTTPS
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.securityHeaders} onChange={e => setPlanForm({...planForm, securityHeaders: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Free Security Headers
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.basicAnalytics} onChange={e => setPlanForm({...planForm, basicAnalytics: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Basic Analytics
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.advanceAnalytics} onChange={e => setPlanForm({...planForm, advanceAnalytics: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Advance Analytics
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={planForm.whatsappOrderButton} onChange={e => setPlanForm({...planForm, whatsappOrderButton: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  WhatsApp Order Button
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
                   <input type="checkbox" checked={planForm.themes} onChange={e => setPlanForm({...planForm, themes: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
@@ -218,8 +264,14 @@ const SuperAdminMainpanel = () => {
                 <p className="text-3xl font-extrabold text-slate-900 mb-4">₹{plan.price}<span className="text-sm font-medium text-slate-500">/mo</span></p>
                 <ul className="space-y-2 text-sm text-slate-600">
                   <li className="flex items-center gap-2">✓ Up to {plan.features.maxProducts} Products</li>
+                  <li className="flex items-center gap-2">✓ Up to {plan.features.storeLimit || 1} Store(s)</li>
+                  <li className="flex items-center gap-2">✓ {plan.features.storageLimit ? (plan.features.storageLimit >= 1000 ? `${plan.features.storageLimit / 1000}GB` : `${plan.features.storageLimit}MB`) : '500MB'} Storage</li>
                   <li className="flex items-center gap-2">{plan.features.customDomain ? '✓' : '✕'} Custom Domain</li>
-                  <li className="flex items-center gap-2">{plan.features.analytics ? '✓' : '✕'} Analytics</li>
+                  <li className="flex items-center gap-2">{plan.features.freeSsl ? '✓' : '✕'} Free SSL/TLS HTTPS</li>
+                  <li className="flex items-center gap-2">{plan.features.securityHeaders ? '✓' : '✕'} Free Security Headers</li>
+                  <li className="flex items-center gap-2">{plan.features.basicAnalytics ? '✓' : '✕'} Basic Analytics</li>
+                  <li className="flex items-center gap-2">{plan.features.advanceAnalytics ? '✓' : '✕'} Advance Analytics</li>
+                  <li className="flex items-center gap-2">{plan.features.whatsappOrderButton ? '✓' : '✕'} WhatsApp Order Button</li>
                   <li className="flex items-center gap-2">{plan.features.themes ? '✓' : '✕'} Premium Themes</li>
                   <li className="flex items-center gap-2">{plan.features.prioritySupport ? '✓' : '✕'} Priority Support</li>
                 </ul>
