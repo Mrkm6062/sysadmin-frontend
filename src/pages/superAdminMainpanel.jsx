@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2 } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -27,12 +27,27 @@ const SuperAdminMainpanel = () => {
   });
   const [activeTab, setActiveTab] = useState('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Policy States
+  const [policies, setPolicies] = useState([]);
+  const [isPolicyFormOpen, setIsPolicyFormOpen] = useState(false);
+  const [policyForm, setPolicyForm] = useState({
+    type: 'privacy', title: '', content: '', version: '1.0', isActive: true
+  });
+  
+  // Social Media States
+  const [platformSocials, setPlatformSocials] = useState([]);
+  const [newSocialPlatform, setNewSocialPlatform] = useState('Facebook');
+  const [newSocialUrl, setNewSocialUrl] = useState('');
+  const [socialStatus, setSocialStatus] = useState('');
 
   const menuItems = [
     { id: 'overview', name: 'Overview', icon: <LayoutDashboard size={20} /> },
     { id: 'plans', name: 'Subscription Plans', icon: <CreditCard size={20} /> },
     { id: 'users', name: 'Platform Users', icon: <Users size={20} /> },
     { id: 'stores', name: 'Active Stores', icon: <Store size={20} /> },
+    { id: 'policies', name: 'Platform Policies', icon: <FileText size={20} /> },
+    { id: 'socials', name: 'Global Social Links', icon: <LinkIcon size={20} /> },
   ];
   const navigate = useNavigate();
 
@@ -58,6 +73,14 @@ const SuperAdminMainpanel = () => {
         const responsePlans = await fetch(`${API_BASE_URL}/plans`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        const responsePolicies = await fetch(`${API_BASE_URL}/policies`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const responseSocials = await fetch(`${API_BASE_URL}/social-media`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
         if (response.ok) {
           const data = await response.json();
@@ -65,6 +88,12 @@ const SuperAdminMainpanel = () => {
           setStores(data.stores || []);
           if (responsePlans.ok) {
             setPlans(await responsePlans.json());
+          }
+          if (responsePolicies.ok) {
+            setPolicies(await responsePolicies.json());
+          }
+          if (responseSocials.ok) {
+            setPlatformSocials(await responseSocials.json());
           }
         } else {
           setError('Failed to fetch platform data. Please relogin.');
@@ -175,6 +204,94 @@ const SuperAdminMainpanel = () => {
       }
     } catch (err) {
       setError('Network error while deleting user');
+    }
+  };
+
+  const handleSavePolicy = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      
+      const response = await fetch(`${API_BASE_URL}/policies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(policyForm)
+      });
+
+      if (response.ok) {
+        const savedPolicy = await response.json();
+        setPolicies(prev => {
+          const exists = prev.find(p => p.type === savedPolicy.type);
+          if (exists) return prev.map(p => p.type === savedPolicy.type ? savedPolicy : p);
+          return [...prev, savedPolicy];
+        });
+        setIsPolicyFormOpen(false);
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to save policy');
+      }
+    } catch (err) {
+      setError('Network error while saving policy');
+    }
+  };
+
+  const editPolicy = (policy) => {
+    setPolicyForm({ type: policy.type, title: policy.title, content: policy.content, version: policy.version, isActive: policy.isActive });
+    setIsPolicyFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeletePolicy = async (policyId) => {
+    if (!window.confirm("Are you sure you want to delete this platform policy?")) return;
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const response = await fetch(`${API_BASE_URL}/policies/${policyId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (response.ok) setPolicies(policies.filter(p => p._id !== policyId));
+    } catch (err) {
+      setError('Network error while deleting policy');
+    }
+  };
+
+  const handleAddSocial = async (e) => {
+    e.preventDefault();
+    if (!newSocialUrl) return;
+    setSocialStatus('Adding...');
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const res = await fetch(`${API_BASE_URL}/social-media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ platform: newSocialPlatform, url: newSocialUrl })
+      });
+      if (res.ok) {
+        setNewSocialUrl('');
+        setSocialStatus('');
+        const newSocial = await res.json();
+        setPlatformSocials([...platformSocials, newSocial]);
+      } else {
+        setSocialStatus('Failed to add link');
+      }
+    } catch (err) {
+      setSocialStatus('Error occurred');
+    }
+  };
+
+  const handleDeleteSocial = async (id) => {
+    if (!window.confirm("Delete this social link?")) return;
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const res = await fetch(`${API_BASE_URL}/social-media/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setPlatformSocials(platformSocials.filter(s => s._id !== id));
+    } catch (err) {
+      setError('Network error while deleting social link');
     }
   };
 
@@ -471,6 +588,121 @@ const SuperAdminMainpanel = () => {
                 {stores.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-500 font-medium">No stores created yet.</td></tr>}
               </tbody>
             </table>
+          </div>
+        </div>
+        )}
+
+        {/* Platform Policies Management */}
+        {activeTab === 'policies' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-slate-800">Platform Policies</h2>
+            <button 
+              onClick={() => {
+                setPolicyForm({ type: 'privacy', title: '', content: '', version: '1.0', isActive: true });
+                setIsPolicyFormOpen(!isPolicyFormOpen);
+              }} 
+              className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+            >
+              {isPolicyFormOpen ? 'Cancel' : '+ Add / Edit Policy'}
+            </button>
+          </div>
+
+          {isPolicyFormOpen && (
+            <form onSubmit={handleSavePolicy} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8 space-y-4 animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Policy Type</label>
+                  <select value={policyForm.type} onChange={e => setPolicyForm({...policyForm, type: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="privacy">Privacy Policy</option>
+                    <option value="terms">Terms of Service</option>
+                    <option value="refund">Refund Policy</option>
+                    <option value="cookies">Cookies Policy</option>
+                    <option value="acceptable_use">Acceptable Use</option>
+                    <option value="disclaimer">Disclaimer</option>
+                  </select>
+                </div>
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Title</label><input type="text" value={policyForm.title} onChange={e => setPolicyForm({...policyForm, title: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required placeholder="e.g. Platform Privacy Policy" /></div>
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Version</label><input type="text" value={policyForm.version} onChange={e => setPolicyForm({...policyForm, version: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required placeholder="e.g. 1.0" /></div>
+              </div>
+              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Content</label><textarea value={policyForm.content} onChange={e => setPolicyForm({...policyForm, content: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-64 resize-none" required placeholder="Enter policy text or HTML..."></textarea></div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={policyForm.isActive} onChange={e => setPolicyForm({...policyForm, isActive: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Active (Visible on Site)</label>
+              </div>
+              <button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition mt-2 shadow-lg shadow-blue-200">Save Platform Policy</button>
+            </form>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {policies.map(policy => (
+              <div key={policy._id} className="border border-slate-200 rounded-xl p-6 hover:shadow-md transition bg-white flex flex-col">
+                <div className="flex justify-between items-start mb-4">
+                  <div><span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded-md">{policy.type.replace('_', ' ')}</span><h3 className="text-xl font-bold text-slate-800 mt-2">{policy.title}</h3></div>
+                  <span className={`px-2 py-1 rounded-md text-xs font-bold ${policy.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{policy.isActive ? 'Active' : 'Draft'}</span>
+                </div>
+                <div className="text-sm text-slate-500 mb-6 line-clamp-4 flex-1 bg-slate-50 p-4 rounded-xl border border-slate-100 whitespace-pre-wrap">{policy.content}</div>
+                <div className="flex justify-between items-center text-sm font-medium text-slate-500 border-t border-slate-100 pt-4">
+                  <span className="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold text-slate-500">v{policy.version}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => editPolicy(policy)} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
+                    <button onClick={() => handleDeletePolicy(policy._id)} className="text-red-500 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {policies.length === 0 && !isPolicyFormOpen && <div className="col-span-2 text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-500 font-medium">No platform policies created yet.</div>}
+          </div>
+        </div>
+        )}
+
+        {/* Global Social Links */}
+        {activeTab === 'socials' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+          <h2 className="text-2xl font-bold mb-6 text-slate-800">Global Social Media Links</h2>
+          <p className="text-sm text-slate-500 mb-6">Manage the social media links that appear on the public platform footer (e.g., the Login and Registration pages).</p>
+          
+          <form onSubmit={handleAddSocial} className="flex flex-col sm:flex-row gap-3 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <select 
+              value={newSocialPlatform} 
+              onChange={(e) => setNewSocialPlatform(e.target.value)}
+              className="px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-700"
+            >
+              <option value="Facebook">Facebook</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Twitter">Twitter</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="YouTube">YouTube</option>
+              <option value="Other">Other Link</option>
+            </select>
+            <input 
+              type="url" 
+              required
+              placeholder="https://..."
+              value={newSocialUrl}
+              onChange={(e) => setNewSocialUrl(e.target.value)}
+              className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+            <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition whitespace-nowrap">
+              + Add Link
+            </button>
+          </form>
+          {socialStatus && <p className="text-sm text-red-500 mb-4 font-medium">{socialStatus}</p>}
+
+          <div className="space-y-3">
+            {platformSocials.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 font-medium border-2 border-dashed border-slate-100 rounded-xl">No social links added yet</div>
+            ) : platformSocials.map(link => (
+              <div key={link._id} className="flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:shadow-md transition bg-white group">
+                <div className="flex items-center gap-4 overflow-hidden">
+                  <div className="p-2 bg-slate-50 rounded-lg border border-slate-100"><LinkIcon size={20} className="text-blue-600" /></div>
+                  <div className="truncate">
+                    <p className="font-bold text-slate-800 text-sm">{link.platform}</p>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline truncate block max-w-[200px] sm:max-w-xs">{link.url}</a>
+                  </div>
+                </div>
+                <button onClick={() => handleDeleteSocial(link._id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+              </div>
+            ))}
           </div>
         </div>
         )}
