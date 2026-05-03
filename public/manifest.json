@@ -1,0 +1,21 @@
+{
+  "short_name": "GB SuperAdmin Dashboard",
+  "name": "Galibrand SuperAdmin Dashboard",
+  "description": "Manage Dashboards for Galibrand",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#ffffff",
+  "background_color": "#f8fafc"
+}
