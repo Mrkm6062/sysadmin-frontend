@@ -325,6 +325,7 @@ const SuperAdminMainpanel = () => {
     setSettingsStatus('Uploading logo...');
 
     const uploadData = new FormData();
+    uploadData.append('storeId', 'superadmin');
     uploadData.append('images', file); // Use a generic folder or a dedicated one
 
     try {
@@ -358,6 +359,7 @@ const SuperAdminMainpanel = () => {
     setSettingsStatus('Uploading grid images...');
 
     const uploadData = new FormData();
+    uploadData.append('storeId', 'superadmin');
     files.forEach(file => uploadData.append('images', file));
 
     try {
