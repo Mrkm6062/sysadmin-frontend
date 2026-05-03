@@ -73,7 +73,7 @@ const SuperAdminMainpanel = () => {
           return;
         }
 
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+        const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
         const response = await fetch(`${API_BASE_URL}/data`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -128,7 +128,7 @@ const SuperAdminMainpanel = () => {
     setError('');
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
       
       const response = await fetch(`${API_BASE_URL}/plans`, {
         method: 'POST',
@@ -204,7 +204,7 @@ const SuperAdminMainpanel = () => {
     
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
       
       const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: 'DELETE',
@@ -227,7 +227,7 @@ const SuperAdminMainpanel = () => {
     setError('');
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
       
       const response = await fetch(`${API_BASE_URL}/policies`, {
         method: 'POST',
@@ -262,7 +262,7 @@ const SuperAdminMainpanel = () => {
     if (!window.confirm("Are you sure you want to delete this platform policy?")) return;
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
       const response = await fetch(`${API_BASE_URL}/policies/${policyId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (response.ok) setPolicies(policies.filter(p => p._id !== policyId));
     } catch (err) {
@@ -276,7 +276,7 @@ const SuperAdminMainpanel = () => {
     setSocialStatus('Adding...');
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
       const res = await fetch(`${API_BASE_URL}/social-media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -299,7 +299,7 @@ const SuperAdminMainpanel = () => {
     if (!window.confirm("Delete this social link?")) return;
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
       const res = await fetch(`${API_BASE_URL}/social-media/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -372,7 +372,7 @@ const SuperAdminMainpanel = () => {
   const handleSaveSettings = async (newSettings) => {
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
       const response = await fetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
