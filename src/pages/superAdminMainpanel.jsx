@@ -325,7 +325,7 @@ const SuperAdminMainpanel = () => {
     setSettingsStatus('Uploading logo...');
 
     const uploadData = new FormData();
-    uploadData.append('storeId', 'superadmin');
+    uploadData.append('storeId', '000000000000000000000000'); // 24-char valid hex to prevent MongoDB CastError
     uploadData.append('images', file); // Use a generic folder or a dedicated one
 
     try {
@@ -359,7 +359,7 @@ const SuperAdminMainpanel = () => {
     setSettingsStatus('Uploading grid images...');
 
     const uploadData = new FormData();
-    uploadData.append('storeId', 'superadmin');
+    uploadData.append('storeId', '000000000000000000000000'); // 24-char valid hex to prevent MongoDB CastError
     files.forEach(file => uploadData.append('images', file));
 
     try {
