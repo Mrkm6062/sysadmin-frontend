@@ -14,7 +14,8 @@ const SuperAdminLogin = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

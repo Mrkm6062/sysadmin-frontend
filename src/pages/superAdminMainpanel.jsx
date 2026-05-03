@@ -73,7 +73,8 @@ const SuperAdminMainpanel = () => {
           return;
         }
 
-        const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+        const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+        const API_BASE_URL = `${envUrl}/api/superadmin`;
         const response = await fetch(`${API_BASE_URL}/data`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -91,7 +92,8 @@ const SuperAdminMainpanel = () => {
         });
 
         // Fetch platform settings (this is a public route, but we can call it)
-        const API_PUBLIC_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+        const envPublicUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+        const API_PUBLIC_URL = envPublicUrl;
         const responseSettings = await fetch(`${API_PUBLIC_URL}/api/platform-settings`);
 
         if (response.ok) {
@@ -128,7 +130,8 @@ const SuperAdminMainpanel = () => {
     setError('');
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       
       const response = await fetch(`${API_BASE_URL}/plans`, {
         method: 'POST',
@@ -204,7 +207,8 @@ const SuperAdminMainpanel = () => {
     
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       
       const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: 'DELETE',
@@ -227,7 +231,8 @@ const SuperAdminMainpanel = () => {
     setError('');
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       
       const response = await fetch(`${API_BASE_URL}/policies`, {
         method: 'POST',
@@ -262,7 +267,8 @@ const SuperAdminMainpanel = () => {
     if (!window.confirm("Are you sure you want to delete this platform policy?")) return;
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       const response = await fetch(`${API_BASE_URL}/policies/${policyId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (response.ok) setPolicies(policies.filter(p => p._id !== policyId));
     } catch (err) {
@@ -276,7 +282,8 @@ const SuperAdminMainpanel = () => {
     setSocialStatus('Adding...');
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       const res = await fetch(`${API_BASE_URL}/social-media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -299,7 +306,8 @@ const SuperAdminMainpanel = () => {
     if (!window.confirm("Delete this social link?")) return;
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       const res = await fetch(`${API_BASE_URL}/social-media/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -320,7 +328,8 @@ const SuperAdminMainpanel = () => {
     uploadData.append('images', file); // Use a generic folder or a dedicated one
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = envUrl;
       const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` },
@@ -352,7 +361,8 @@ const SuperAdminMainpanel = () => {
     files.forEach(file => uploadData.append('images', file));
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = envUrl;
       const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` }, body: uploadData });
 
       if (uploadRes.ok) {
@@ -372,7 +382,8 @@ const SuperAdminMainpanel = () => {
   const handleSaveSettings = async (newSettings) => {
     try {
       const token = localStorage.getItem('superadmin_token');
-      const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3011'}/api/superadmin`;
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = `${envUrl}/api/superadmin`;
       const response = await fetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
