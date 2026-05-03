@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2, Settings } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -41,6 +41,13 @@ const SuperAdminMainpanel = () => {
   const [newSocialUrl, setNewSocialUrl] = useState('');
   const [socialStatus, setSocialStatus] = useState('');
 
+  // Platform Settings States
+  const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', loginImageGrid: [] });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingGrid, setUploadingGrid] = useState(false);
+  const [settingsStatus, setSettingsStatus] = useState('');
+
+
   const menuItems = [
     { id: 'overview', name: 'Overview', icon: <LayoutDashboard size={20} /> },
     { id: 'plans', name: 'Subscription Plans', icon: <CreditCard size={20} /> },
@@ -48,6 +55,7 @@ const SuperAdminMainpanel = () => {
     { id: 'stores', name: 'Active Stores', icon: <Store size={20} /> },
     { id: 'policies', name: 'Platform Policies', icon: <FileText size={20} /> },
     { id: 'socials', name: 'Global Social Links', icon: <LinkIcon size={20} /> },
+    { id: 'settings', name: 'Dashboard Settings', icon: <Settings size={20} /> },
   ];
   const navigate = useNavigate();
 
@@ -82,6 +90,10 @@ const SuperAdminMainpanel = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // Fetch platform settings (this is a public route, but we can call it)
+        const API_PUBLIC_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+        const responseSettings = await fetch(`${API_PUBLIC_URL}/api/platform-settings`);
+
         if (response.ok) {
           const data = await response.json();
           setUsers(data.users || []);
@@ -94,6 +106,9 @@ const SuperAdminMainpanel = () => {
           }
           if (responseSocials.ok) {
             setPlatformSocials(await responseSocials.json());
+          }
+          if (responseSettings.ok) {
+            setPlatformSettings(await responseSettings.json());
           }
         } else {
           setError('Failed to fetch platform data. Please relogin.');
@@ -292,6 +307,84 @@ const SuperAdminMainpanel = () => {
       if (res.ok) setPlatformSocials(platformSocials.filter(s => s._id !== id));
     } catch (err) {
       setError('Network error while deleting social link');
+    }
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    setSettingsStatus('Uploading logo...');
+
+    const uploadData = new FormData();
+    uploadData.append('images', file); // Use a generic folder or a dedicated one
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+      const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` },
+        body: uploadData
+      });
+
+      if (uploadRes.ok) {
+        const data = await uploadRes.json();
+        const newLogoUrl = data.urls[0];
+        setPlatformSettings(prev => ({ ...prev, mainLogoUrl: newLogoUrl }));
+        await handleSaveSettings({ mainLogoUrl: newLogoUrl });
+      } else {
+        setSettingsStatus('Logo upload failed.');
+      }
+    } catch (err) {
+      setSettingsStatus('Error during logo upload.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleGridImagesUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    setUploadingGrid(true);
+    setSettingsStatus('Uploading grid images...');
+
+    const uploadData = new FormData();
+    files.forEach(file => uploadData.append('images', file));
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+      const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` }, body: uploadData });
+
+      if (uploadRes.ok) {
+        const data = await uploadRes.json();
+        setPlatformSettings(prev => ({ ...prev, loginImageGrid: data.urls }));
+        await handleSaveSettings({ loginImageGrid: data.urls });
+      } else {
+        setSettingsStatus('Grid image upload failed.');
+      }
+    } catch (err) {
+      setSettingsStatus('Error during grid image upload.');
+    } finally {
+      setUploadingGrid(false);
+    }
+  };
+
+  const handleSaveSettings = async (newSettings) => {
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api/superadmin';
+      const response = await fetch(`${API_BASE_URL}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(newSettings)
+      });
+      if (response.ok) {
+        setSettingsStatus('Settings saved successfully!');
+      } else {
+        setSettingsStatus('Failed to save settings.');
+      }
+    } catch (err) {
+      setSettingsStatus('Network error while saving settings.');
     }
   };
 
@@ -703,6 +796,48 @@ const SuperAdminMainpanel = () => {
                 <button onClick={() => handleDeleteSocial(link._id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
               </div>
             ))}
+          </div>
+        </div>
+        )}
+
+        {/* Platform Settings */}
+        {activeTab === 'settings' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+          <h2 className="text-2xl font-bold mb-6 text-slate-800">Dashboard & Login Page Settings</h2>
+          {settingsStatus && <p className="text-sm text-blue-600 mb-4 font-medium">{settingsStatus}</p>}
+
+          <div className="space-y-8">
+            {/* Main Logo */}
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Main Platform Logo</h3>
+              <p className="text-sm text-slate-500 mb-4">This logo appears on the login page and tenant dashboards.</p>
+              <div className="flex items-center gap-6">
+                <div className="w-48 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2">
+                  <img src={platformSettings.mainLogoUrl} alt="Main Logo Preview" className="max-w-full max-h-full object-contain" />
+                </div>
+                <label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingLogo ? 'opacity-50' : ''}`}>
+                  {uploadingLogo ? 'Uploading...' : 'Change Logo'}
+                  <input type="file" accept="image/png, image/jpeg, image/svg+xml" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                </label>
+              </div>
+            </div>
+
+            {/* Login Page Image Grid */}
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Login Page Image Grid</h3>
+              <p className="text-sm text-slate-500 mb-4">Upload exactly 9 images to populate the animated grid on the login page.</p>
+              <div className="grid grid-cols-3 gap-4 mb-4 max-w-md">
+                {(platformSettings.loginImageGrid.length > 0 ? platformSettings.loginImageGrid : Array(9).fill('')).slice(0, 9).map((img, idx) => (
+                  <div key={idx} className="aspect-square bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center">
+                    {img ? <img src={img} className="w-full h-full object-cover rounded-xl" /> : <span className="text-slate-400 text-xs">Image {idx + 1}</span>}
+                  </div>
+                ))}
+              </div>
+              <label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingGrid ? 'opacity-50' : ''}`}>
+                {uploadingGrid ? 'Uploading...' : 'Upload 9 Images'}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleGridImagesUpload} disabled={uploadingGrid} />
+              </label>
+            </div>
           </div>
         </div>
         )}
