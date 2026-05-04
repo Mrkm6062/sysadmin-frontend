@@ -456,7 +456,11 @@ const SuperAdminMainpanel = () => {
       {/* Sidebar */}
       <div className={`fixed md:relative inset-y-0 left-0 z-50 w-64 min-h-screen bg-slate-900 text-white flex flex-col shrink-0 transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 shrink-0">
-          <span className="text-xl font-black tracking-wide text-white">GB <span className="text-blue-500">SYSADMIN</span></span>
+          {platformSettings.mainLogoUrl ? (
+            <img src={platformSettings.mainLogoUrl} alt="Platform Logo" className="h-8 w-auto object-contain bg-white px-2 py-1 rounded" />
+          ) : (
+            <span className="text-xl font-black tracking-wide text-white">GB <span className="text-blue-500">SYSADMIN</span></span>
+          )}
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-1 text-slate-400 hover:text-white transition-colors">
             <X size={24} />
           </button>
