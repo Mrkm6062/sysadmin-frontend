@@ -45,7 +45,7 @@ const SuperAdminMainpanel = () => {
   const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [] });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingMiniLogo, setUploadingMiniLogo] = useState(false);
-  const [uploadingGrid, setUploadingGrid] = useState(false);
+  const [uploadingGridIndex, setUploadingGridIndex] = useState(null);
   const [settingsStatus, setSettingsStatus] = useState('');
 
 
@@ -387,15 +387,15 @@ const SuperAdminMainpanel = () => {
     }
   };
 
-  const handleGridImagesUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    setUploadingGrid(true);
-    setSettingsStatus('Uploading grid images...');
+  const handleSingleGridImageUpload = async (e, index) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingGridIndex(index);
+    setSettingsStatus(`Uploading image ${index + 1}...`);
 
     const uploadData = new FormData();
     uploadData.append('storeId', '000000000000000000000000'); // 24-char valid hex to prevent MongoDB CastError
-    files.forEach(file => uploadData.append('images', file));
+    uploadData.append('images', file);
 
     try {
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
@@ -404,15 +404,19 @@ const SuperAdminMainpanel = () => {
 
       if (uploadRes.ok) {
         const data = await uploadRes.json();
-        setPlatformSettings(prev => ({ ...prev, loginImageGrid: data.urls }));
-        await handleSaveSettings({ loginImageGrid: data.urls });
+        const newGrid = [...(platformSettings.loginImageGrid.length > 0 ? platformSettings.loginImageGrid : Array(9).fill(''))];
+        while (newGrid.length < 9) newGrid.push('');
+        newGrid[index] = data.urls[0];
+        
+        setPlatformSettings(prev => ({ ...prev, loginImageGrid: newGrid }));
+        await handleSaveSettings({ loginImageGrid: newGrid });
       } else {
-        setSettingsStatus('Grid image upload failed.');
+        setSettingsStatus(`Image ${index + 1} upload failed.`);
       }
     } catch (err) {
-      setSettingsStatus('Error during grid image upload.');
+      setSettingsStatus(`Error during image ${index + 1} upload.`);
     } finally {
-      setUploadingGrid(false);
+      setUploadingGridIndex(null);
     }
   };
 
@@ -895,15 +899,17 @@ const SuperAdminMainpanel = () => {
               <p className="text-sm text-slate-500 mb-4">Upload exactly 9 images to populate the animated grid on the login page.</p>
               <div className="grid grid-cols-3 gap-4 mb-4 max-w-md">
                 {(platformSettings.loginImageGrid.length > 0 ? platformSettings.loginImageGrid : Array(9).fill('')).slice(0, 9).map((img, idx) => (
-                  <div key={idx} className="aspect-square bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center">
-                    {img ? <img src={img} className="w-full h-full object-cover rounded-xl" /> : <span className="text-slate-400 text-xs">Image {idx + 1}</span>}
+                  <div key={idx} className="relative aspect-square bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center overflow-hidden group">
+                    {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover" /> : <span className="text-slate-400 text-xs z-10">Image {idx + 1}</span>}
+                    <div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${img ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+                      <label className={`cursor-pointer px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition shadow-sm ${uploadingGridIndex === idx ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {uploadingGridIndex === idx ? '...' : img ? 'Change' : 'Upload'}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleSingleGridImageUpload(e, idx)} disabled={uploadingGridIndex !== null} />
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>
-              <label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingGrid ? 'opacity-50' : ''}`}>
-                {uploadingGrid ? 'Uploading...' : 'Upload 9 Images'}
-                <input type="file" accept="image/*" multiple className="hidden" onChange={handleGridImagesUpload} disabled={uploadingGrid} />
-              </label>
             </div>
           </div>
         </div>
