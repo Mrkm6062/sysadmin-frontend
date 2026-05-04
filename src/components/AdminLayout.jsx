@@ -38,7 +38,7 @@ const AdminLayout = ({ stores, onLogout, headerTitle = "Overview Dashboard", chi
       <div className="w-64 min-h-screen bg-white border-r border-gray-100 flex flex-col p-4 shrink-0">
         <div className="mb-10 px-2">
           <img 
-            src="https://galibrand.cloud/public/Name.png" 
+            src="https://storage.googleapis.com/galibrand/superadmin/products/galibrandfullname-logo.png" 
             alt="GB Galibrand Logo" 
             className="h-12 w-auto"
           />
