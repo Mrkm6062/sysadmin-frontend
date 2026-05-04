@@ -42,8 +42,9 @@ const SuperAdminMainpanel = () => {
   const [socialStatus, setSocialStatus] = useState('');
 
   // Platform Settings States
-  const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', loginImageGrid: [] });
+  const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [] });
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingMiniLogo, setUploadingMiniLogo] = useState(false);
   const [uploadingGrid, setUploadingGrid] = useState(false);
   const [settingsStatus, setSettingsStatus] = useState('');
 
@@ -349,6 +350,40 @@ const SuperAdminMainpanel = () => {
       setSettingsStatus('Error during logo upload.');
     } finally {
       setUploadingLogo(false);
+    }
+  };
+
+  const handleMiniLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingMiniLogo(true);
+    setSettingsStatus('Uploading mini logo...');
+
+    const uploadData = new FormData();
+    uploadData.append('storeId', '000000000000000000000000'); // 24-char valid hex to prevent MongoDB CastError
+    uploadData.append('images', file); // Use a generic folder or a dedicated one
+
+    try {
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const API_BASE_URL = envUrl;
+      const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` },
+        body: uploadData
+      });
+
+      if (uploadRes.ok) {
+        const data = await uploadRes.json();
+        const newLogoUrl = data.urls[0];
+        setPlatformSettings(prev => ({ ...prev, miniLogoUrl: newLogoUrl }));
+        await handleSaveSettings({ miniLogoUrl: newLogoUrl });
+      } else {
+        setSettingsStatus('Mini logo upload failed.');
+      }
+    } catch (err) {
+      setSettingsStatus('Error during mini logo upload.');
+    } finally {
+      setUploadingMiniLogo(false);
     }
   };
 
@@ -831,6 +866,25 @@ const SuperAdminMainpanel = () => {
                 <label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingLogo ? 'opacity-50' : ''}`}>
                   {uploadingLogo ? 'Uploading...' : 'Change Logo'}
                   <input type="file" accept="image/png, image/jpeg, image/svg+xml" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                </label>
+              </div>
+            </div>
+
+            {/* Mini Logo */}
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Mini Logo (Collapsed Sidebar)</h3>
+              <p className="text-sm text-slate-500 mb-4">This logo appears when the sidebar is collapsed (e.g., G & B icon).</p>
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2">
+                  {platformSettings.miniLogoUrl ? (
+                    <img src={platformSettings.miniLogoUrl} alt="Mini Logo Preview" className="max-w-full max-h-full object-contain" />
+                  ) : (
+                    <span className="text-slate-400 font-bold text-2xl">GB</span>
+                  )}
+                </div>
+                <label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingMiniLogo ? 'opacity-50' : ''}`}>
+                  {uploadingMiniLogo ? 'Uploading...' : 'Change Mini Logo'}
+                  <input type="file" accept="image/png, image/jpeg, image/svg+xml" className="hidden" onChange={handleMiniLogoUpload} disabled={uploadingMiniLogo} />
                 </label>
               </div>
             </div>
