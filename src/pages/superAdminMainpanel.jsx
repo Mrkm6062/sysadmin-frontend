@@ -689,7 +689,6 @@ const SuperAdminMainpanel = () => {
                 <p className="text-3xl font-extrabold text-slate-900 mb-4">₹{plan.price}<span className="text-sm font-medium text-slate-500">/mo</span></p>
                 <ul className="space-y-2 text-sm text-slate-600">
                   <li className="flex items-center gap-2">✓ Up to {plan.features.maxProducts} Products</li>
-                  <li className="flex items-center gap-2">✓ Up to {plan.features.storeLimit || 1} Store(s)</li>
                   <li className="flex items-center gap-2">✓ {plan.features.storageLimit ? (plan.features.storageLimit >= 1000 ? `${plan.features.storageLimit / 1000}GB` : `${plan.features.storageLimit}MB`) : '500MB'} Storage</li>
                   <li className="flex items-center gap-2">{plan.features.customDomain ? '✓' : '✕'} Custom Domain</li>
                   <li className="flex items-center gap-2">{plan.features.freeSsl ? '✓' : '✕'} Free SSL/TLS HTTPS</li>
