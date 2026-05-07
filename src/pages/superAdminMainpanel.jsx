@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2, Settings } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2, Settings, Package } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -56,6 +56,13 @@ const SuperAdminMainpanel = () => {
   });
   const [paymentStatus, setPaymentStatus] = useState('');
 
+  // Default Products States
+  const [defaultProducts, setDefaultProducts] = useState([]);
+  const [isDefaultProductFormOpen, setIsDefaultProductFormOpen] = useState(false);
+  const [editingDefaultProductId, setEditingDefaultProductId] = useState(null);
+  const [defaultProductForm, setDefaultProductForm] = useState({
+    name: '', description: '', basePrice: 0, unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true
+  });
 
   const menuItems = [
     { id: 'overview', name: 'Overview', icon: <LayoutDashboard size={20} /> },
@@ -63,6 +70,7 @@ const SuperAdminMainpanel = () => {
     { id: 'users', name: 'Platform Users', icon: <Users size={20} /> },
     { id: 'stores', name: 'Active Stores', icon: <Store size={20} /> },
     { id: 'policies', name: 'Platform Policies', icon: <FileText size={20} /> },
+    { id: 'default-products', name: 'Default Catalog', icon: <Package size={20} /> },
     { id: 'payments', name: 'Payment Gateway', icon: <CreditCard size={20} /> },
     { id: 'socials', name: 'Global Social Links', icon: <LinkIcon size={20} /> },
     { id: 'settings', name: 'Dashboard Settings', icon: <Settings size={20} /> },
@@ -96,6 +104,10 @@ const SuperAdminMainpanel = () => {
         const responsePolicies = await fetch(`${API_BASE_URL}/policies`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        const responseDefaultProducts = await fetch(`${API_BASE_URL}/default-products`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         
         // Fetch payment settings
         const responsePayments = await fetch(`${envUrl}/api/platform-payments/settings`, {
@@ -120,6 +132,10 @@ const SuperAdminMainpanel = () => {
           }
           if (responsePolicies.ok) {
             setPolicies(await responsePolicies.json());
+          }
+          if (responseDefaultProducts.ok) {
+            const dpData = await responseDefaultProducts.json();
+            setDefaultProducts(dpData.data || []);
           }
           if (responseSocials.ok) {
             setPlatformSocials(await responseSocials.json());
@@ -296,6 +312,79 @@ const SuperAdminMainpanel = () => {
       if (response.ok) setPolicies(policies.filter(p => p._id !== policyId));
     } catch (err) {
       setError('Network error while deleting policy');
+    }
+  };
+
+  const handleSaveDefaultProduct = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const method = editingDefaultProductId ? 'PUT' : 'POST';
+      const url = editingDefaultProductId ? `${envUrl}/api/superadmin/default-products/${editingDefaultProductId}` : `${envUrl}/api/superadmin/default-products`;
+
+      const payload = {
+        ...defaultProductForm,
+        storeTypes: defaultProductForm.storeTypes.split(',').map(s => s.trim()).filter(Boolean),
+        basePrice: Number(defaultProductForm.basePrice)
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setDefaultProducts(prev => {
+          if (editingDefaultProductId) return prev.map(p => p._id === editingDefaultProductId ? result.product : p);
+          return [result.product, ...prev];
+        });
+        setIsDefaultProductFormOpen(false);
+        setEditingDefaultProductId(null);
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to save default product');
+      }
+    } catch (err) {
+      setError('Network error while saving default product');
+    }
+  };
+
+  const editDefaultProduct = (product) => {
+    setDefaultProductForm({
+      name: product.name || '',
+      description: product.description || '',
+      basePrice: product.basePrice || 0,
+      unitType: product.unitType || 'piece',
+      storeTypes: (product.storeTypes || []).join(', '),
+      category: product.category || '',
+      isActive: product.isActive !== false
+    });
+    setEditingDefaultProductId(product._id);
+    setIsDefaultProductFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteDefaultProduct = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this default product?")) return;
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const response = await fetch(`${envUrl}/api/superadmin/default-products/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setDefaultProducts(defaultProducts.filter(p => p._id !== id));
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to delete default product');
+      }
+    } catch (err) {
+      setError('Network error while deleting default product');
     }
   };
 
@@ -918,6 +1007,109 @@ const SuperAdminMainpanel = () => {
               </div>
             ))}
             {policies.length === 0 && !isPolicyFormOpen && <div className="col-span-2 text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-500 font-medium">No platform policies created yet.</div>}
+          </div>
+        </div>
+        )}
+
+        {/* Default Products Catalog */}
+        {activeTab === 'default-products' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-slate-800">Default Product Catalog</h2>
+            <button 
+              onClick={() => {
+                setDefaultProductForm({ name: '', description: '', basePrice: 0, unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true });
+                setEditingDefaultProductId(null);
+                setIsDefaultProductFormOpen(!isDefaultProductFormOpen);
+              }} 
+              className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+            >
+              {isDefaultProductFormOpen ? 'Cancel' : '+ Add Default Product'}
+            </button>
+          </div>
+
+          {isDefaultProductFormOpen && (
+            <form onSubmit={handleSaveDefaultProduct} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8 space-y-4 animate-fadeIn">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="lg:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Product Name</label>
+                  <input type="text" required value={defaultProductForm.name} onChange={e => setDefaultProductForm({...defaultProductForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 1kg Sugar" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Category</label>
+                  <input type="text" value={defaultProductForm.category} onChange={e => setDefaultProductForm({...defaultProductForm, category: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Groceries" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Base Price (₹)</label>
+                  <input type="number" required value={defaultProductForm.basePrice} onChange={e => setDefaultProductForm({...defaultProductForm, basePrice: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 50" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Store Types (comma separated)</label>
+                  <input type="text" required value={defaultProductForm.storeTypes} onChange={e => setDefaultProductForm({...defaultProductForm, storeTypes: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. kirana, vegetable, grocery" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Unit Type</label>
+                  <select value={defaultProductForm.unitType} onChange={e => setDefaultProductForm({...defaultProductForm, unitType: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="piece">Piece</option>
+                    <option value="kg">Kg</option>
+                    <option value="gram">Gram</option>
+                    <option value="pack">Pack</option>
+                    <option value="plate">Plate</option>
+                    <option value="size">Size</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
+                <textarea value={defaultProductForm.description} onChange={e => setDefaultProductForm({...defaultProductForm, description: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none" placeholder="Product details..."></textarea>
+              </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={defaultProductForm.isActive} onChange={e => setDefaultProductForm({...defaultProductForm, isActive: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                  Active (Visible to Stores)
+                </label>
+              </div>
+              <button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition mt-2 shadow-lg shadow-blue-200">
+                {editingDefaultProductId ? 'Update Default Product' : 'Save Default Product'}
+              </button>
+            </form>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                  <th className="p-4 font-bold">Product Name</th>
+                  <th className="p-4 font-bold">Category</th>
+                  <th className="p-4 font-bold">Store Types</th>
+                  <th className="p-4 font-bold text-right">Price</th>
+                  <th className="p-4 font-bold text-center">Status</th>
+                  <th className="p-4 font-bold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {defaultProducts.map(product => (
+                  <tr key={product._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-4 font-semibold text-slate-800">{product.name}</td>
+                    <td className="p-4 text-sm text-slate-600">{product.category || '-'}</td>
+                    <td className="p-4 text-sm text-slate-600">{(product.storeTypes || []).join(', ')}</td>
+                    <td className="p-4 text-right font-bold text-slate-800">₹{product.basePrice}/{product.unitType}</td>
+                    <td className="p-4 text-center">
+                      <span className={`px-2 py-1 rounded-md text-xs font-bold ${product.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{product.isActive ? 'Active' : 'Inactive'}</span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => editDefaultProduct(product)} className="text-blue-500 hover:text-blue-700 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg transition">Edit</button>
+                        <button onClick={() => handleDeleteDefaultProduct(product._id)} className="text-red-500 hover:text-red-700 text-sm font-bold bg-red-50 px-3 py-1.5 rounded-lg transition">Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {defaultProducts.length === 0 && !isDefaultProductFormOpen && <tr><td colSpan="6" className="p-8 text-center text-slate-500 font-medium border-2 border-dashed border-slate-200 rounded-xl">No default products created yet.</td></tr>}
+              </tbody>
+            </table>
           </div>
         </div>
         )}
