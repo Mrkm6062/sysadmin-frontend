@@ -48,6 +48,14 @@ const SuperAdminMainpanel = () => {
   const [uploadingGridIndex, setUploadingGridIndex] = useState(null);
   const [settingsStatus, setSettingsStatus] = useState('');
 
+  // Platform Payment Settings States
+  const [paymentSettings, setPaymentSettings] = useState({
+    razorpayEnabled: false,
+    razorpayKeyId: '',
+    razorpayKeySecret: ''
+  });
+  const [paymentStatus, setPaymentStatus] = useState('');
+
 
   const menuItems = [
     { id: 'overview', name: 'Overview', icon: <LayoutDashboard size={20} /> },
@@ -55,6 +63,7 @@ const SuperAdminMainpanel = () => {
     { id: 'users', name: 'Platform Users', icon: <Users size={20} /> },
     { id: 'stores', name: 'Active Stores', icon: <Store size={20} /> },
     { id: 'policies', name: 'Platform Policies', icon: <FileText size={20} /> },
+    { id: 'payments', name: 'Payment Gateway', icon: <CreditCard size={20} /> },
     { id: 'socials', name: 'Global Social Links', icon: <LinkIcon size={20} /> },
     { id: 'settings', name: 'Dashboard Settings', icon: <Settings size={20} /> },
   ];
@@ -88,6 +97,11 @@ const SuperAdminMainpanel = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
+        // Fetch payment settings
+        const responsePayments = await fetch(`${envUrl}/api/platform-payment/settings`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
         const responseSocials = await fetch(`${API_BASE_URL}/social-media`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -112,6 +126,14 @@ const SuperAdminMainpanel = () => {
           }
           if (responseSettings.ok) {
             setPlatformSettings(await responseSettings.json());
+          }
+          if (responsePayments.ok) {
+            const paymentData = await responsePayments.json();
+            setPaymentSettings({
+                razorpayEnabled: paymentData.razorpayEnabled || false,
+                razorpayKeyId: paymentData.razorpayKeyId || '',
+                razorpayKeySecret: '' // Always empty on load for security
+            });
           }
         } else {
           setError('Failed to fetch platform data. Please relogin.');
@@ -316,6 +338,42 @@ const SuperAdminMainpanel = () => {
       if (res.ok) setPlatformSocials(platformSocials.filter(s => s._id !== id));
     } catch (err) {
       setError('Network error while deleting social link');
+    }
+  };
+
+  const handleSavePaymentSettings = async (e) => {
+    e.preventDefault();
+    setPaymentStatus('Saving...');
+
+    const payload = {
+      razorpayEnabled: paymentSettings.razorpayEnabled,
+      razorpayKeyId: paymentSettings.razorpayKeyId,
+    };
+    // Only include the secret in the payload if the user has entered a new one.
+    if (paymentSettings.razorpayKeySecret) {
+      payload.razorpayKeySecret = paymentSettings.razorpayKeySecret;
+    }
+
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      
+      const response = await fetch(`${envUrl}/api/platform-payment/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        setPaymentStatus('Payment settings saved successfully!');
+        // Clear the secret field from state after successful save
+        setPaymentSettings(prev => ({ ...prev, razorpayKeySecret: '' }));
+      } else {
+        const data = await response.json();
+        setPaymentStatus(`Error: ${data.message || 'Failed to save settings'}`);
+      }
+    } catch (err) {
+      setPaymentStatus(`Error: ${err.message}`);
     }
   };
 
@@ -649,6 +707,66 @@ const SuperAdminMainpanel = () => {
               <div className="col-span-3 text-center py-8 text-slate-500">No plans configured yet. Click "Add / Edit Plan" to set them up.</div>
             )}
           </div>
+        </div>
+        )}
+
+        {/* Platform Payment Gateway Settings */}
+        {activeTab === 'payments' && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 animate-fadeIn">
+          <h2 className="text-2xl font-bold mb-2 text-slate-800">Payment Gateway Settings</h2>
+          <p className="text-sm text-slate-500 mb-8">Configure Razorpay for platform-wide subscription payments.</p>
+
+          {paymentStatus && (
+            <div className={`p-4 mb-6 rounded-xl font-medium text-sm border ${paymentStatus.includes('Error') ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+              {paymentStatus}
+            </div>
+          )}
+
+          <form onSubmit={handleSavePaymentSettings} className="space-y-6 max-w-2xl">
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="font-bold text-slate-800">Enable Razorpay</span>
+                <div className="relative">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only" 
+                    checked={paymentSettings.razorpayEnabled}
+                    onChange={e => setPaymentSettings({...paymentSettings, razorpayEnabled: e.target.checked})}
+                  />
+                  <div className={`block w-14 h-8 rounded-full ${paymentSettings.razorpayEnabled ? 'bg-blue-600' : 'bg-slate-300'}`}></div>
+                  <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${paymentSettings.razorpayEnabled ? 'translate-x-6' : ''}`}></div>
+                </div>
+              </label>
+            </div>
+
+            {paymentSettings.razorpayEnabled && (
+              <div className="space-y-6 animate-fadeIn">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Razorpay Key ID</label>
+                  <input 
+                    type="text" 
+                    value={paymentSettings.razorpayKeyId}
+                    onChange={e => setPaymentSettings({...paymentSettings, razorpayKeyId: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="rzp_live_..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Razorpay Key Secret</label>
+                  <input 
+                    type="password" 
+                    value={paymentSettings.razorpayKeySecret}
+                    onChange={e => setPaymentSettings({...paymentSettings, razorpayKeySecret: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Enter new secret to update"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Your secret key is encrypted. Leave blank to keep the current secret.</p>
+                </div>
+              </div>
+            )}
+
+            <button type="submit" className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:opacity-50">Save Payment Settings</button>
+          </form>
         </div>
         )}
 
