@@ -66,6 +66,7 @@ const SuperAdminMainpanel = () => {
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [mediaImages, setMediaImages] = useState([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
+  const [uploadingProductImage, setUploadingProductImage] = useState(false);
 
   const menuItems = [
     { id: 'overview', name: 'Overview', icon: <LayoutDashboard size={20} /> },
@@ -334,7 +335,7 @@ const SuperAdminMainpanel = () => {
     const uploadData = new FormData();
     uploadData.append('storeId', '000000000000000000000000'); // Use standard Superadmin ID
     files.forEach(file => uploadData.append('images', file));
-    setLoading(true);
+    setUploadingProductImage(true);
     try {
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
       const response = await fetch(`${envUrl}/api/upload`, {
@@ -345,7 +346,7 @@ const SuperAdminMainpanel = () => {
       const data = await response.json();
       if (response.ok) setDefaultProductForm(prev => ({ ...prev, images: [...prev.images, ...data.urls] }));
       else setError(`Upload Error: ${data.message}`);
-    } catch (err) { setError(`Upload Error: ${err.message}`); } finally { setLoading(false); }
+    } catch (err) { setError(`Upload Error: ${err.message}`); } finally { setUploadingProductImage(false); }
   };
 
   const fetchMedia = async () => {
@@ -1137,9 +1138,9 @@ const SuperAdminMainpanel = () => {
                         <h4 className="font-bold text-lg text-slate-800">Product Images</h4>
                         <div className="flex gap-2">
                           <button type="button" onClick={() => { setIsMediaLibraryOpen(true); fetchMedia(); }} className="text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">View Media Library</button>
-                          <label className="cursor-pointer text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
-                            + Upload Images
-                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleDefaultProductImageUpload} disabled={loading} />
+                          <label className={`cursor-pointer text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors ${uploadingProductImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {uploadingProductImage ? 'Uploading...' : '+ Upload Images'}
+                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleDefaultProductImageUpload} disabled={uploadingProductImage} />
                           </label>
                         </div>
                       </div>
