@@ -98,7 +98,7 @@ const SuperAdminMainpanel = () => {
         });
         
         // Fetch payment settings
-        const responsePayments = await fetch(`${envUrl}/api/platform-payment/settings`, {
+        const responsePayments = await fetch(`${envUrl}/api/platform-payments/settings`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -358,7 +358,7 @@ const SuperAdminMainpanel = () => {
       const token = localStorage.getItem('superadmin_token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
       
-      const response = await fetch(`${envUrl}/api/platform-payment/settings`, {
+      const response = await fetch(`${envUrl}/api/platform-payments/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payload)
