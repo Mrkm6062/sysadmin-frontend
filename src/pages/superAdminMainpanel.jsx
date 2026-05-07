@@ -61,8 +61,11 @@ const SuperAdminMainpanel = () => {
   const [isDefaultProductFormOpen, setIsDefaultProductFormOpen] = useState(false);
   const [editingDefaultProductId, setEditingDefaultProductId] = useState(null);
   const [defaultProductForm, setDefaultProductForm] = useState({
-    name: '', description: '', basePrice: 0, unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true
+    name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true, images: [], variants: []
   });
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
+  const [mediaImages, setMediaImages] = useState([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
 
   const menuItems = [
     { id: 'overview', name: 'Overview', icon: <LayoutDashboard size={20} /> },
@@ -315,6 +318,59 @@ const SuperAdminMainpanel = () => {
     }
   };
 
+  // Default Product Dynamic Field Handlers
+  const handleAddVariant = () => setDefaultProductForm({ ...defaultProductForm, variants: [...defaultProductForm.variants, { name: '', price: '', stock: '', sku: '' }] });
+  const handleUpdateVariant = (index, field, value) => {
+    const newVariants = [...defaultProductForm.variants];
+    newVariants[index][field] = value;
+    setDefaultProductForm({ ...defaultProductForm, variants: newVariants });
+  };
+  const handleRemoveVariant = (index) => setDefaultProductForm({ ...defaultProductForm, variants: defaultProductForm.variants.filter((_, i) => i !== index) });
+  const handleRemoveImage = (index) => setDefaultProductForm({ ...defaultProductForm, images: defaultProductForm.images.filter((_, i) => i !== index) });
+
+  const handleDefaultProductImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    const uploadData = new FormData();
+    uploadData.append('storeId', '000000000000000000000000'); // Use standard Superadmin ID
+    files.forEach(file => uploadData.append('images', file));
+    setLoading(true);
+    try {
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const response = await fetch(`${envUrl}/api/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` },
+        body: uploadData
+      });
+      const data = await response.json();
+      if (response.ok) setDefaultProductForm(prev => ({ ...prev, images: [...prev.images, ...data.urls] }));
+      else setError(`Upload Error: ${data.message}`);
+    } catch (err) { setError(`Upload Error: ${err.message}`); } finally { setLoading(false); }
+  };
+
+  const fetchMedia = async () => {
+    setLoadingMedia(true);
+    try {
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const response = await fetch(`${envUrl}/api/upload?storeId=000000000000000000000000`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` } });
+      const data = await response.json();
+      if (response.ok) setMediaImages(data.images || []);
+    } catch (err) { console.error(err); } finally { setLoadingMedia(false); }
+  };
+
+  const handleDeleteMedia = async (filename) => {
+    if (!window.confirm("Delete this image permanently from cloud storage?")) return;
+    try {
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      const response = await fetch(`${envUrl}/api/upload`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      });
+      if (response.ok) fetchMedia();
+    } catch (err) { console.error(err); }
+  };
+
   const handleSaveDefaultProduct = async (e) => {
     e.preventDefault();
     setError('');
@@ -324,10 +380,16 @@ const SuperAdminMainpanel = () => {
       const method = editingDefaultProductId ? 'PUT' : 'POST';
       const url = editingDefaultProductId ? `${envUrl}/api/superadmin/default-products/${editingDefaultProductId}` : `${envUrl}/api/superadmin/default-products`;
 
+      const variantsData = defaultProductForm.variants.map(v => ({ ...v, price: Number(v.price), stock: Number(v.stock) }));
+      const calculatedTotalStock = variantsData.length > 0 ? variantsData.reduce((acc, curr) => acc + curr.stock, 0) : (Number(defaultProductForm.totalStock) || 0);
+
       const payload = {
         ...defaultProductForm,
-        storeTypes: defaultProductForm.storeTypes.split(',').map(s => s.trim()).filter(Boolean),
-        basePrice: Number(defaultProductForm.basePrice)
+        storeTypes: typeof defaultProductForm.storeTypes === 'string' ? defaultProductForm.storeTypes.split(',').map(s => s.trim()).filter(Boolean) : defaultProductForm.storeTypes,
+        basePrice: Number(defaultProductForm.basePrice) || 0,
+        totalStock: calculatedTotalStock,
+        images: defaultProductForm.images,
+        variants: variantsData
       };
 
       const response = await fetch(url, {
@@ -357,11 +419,14 @@ const SuperAdminMainpanel = () => {
     setDefaultProductForm({
       name: product.name || '',
       description: product.description || '',
-      basePrice: product.basePrice || 0,
+      basePrice: product.basePrice || '',
+      totalStock: product.totalStock !== undefined ? product.totalStock : (product.stock || ''),
       unitType: product.unitType || 'piece',
       storeTypes: (product.storeTypes || []).join(', '),
       category: product.category || '',
-      isActive: product.isActive !== false
+      isActive: product.isActive !== false,
+      images: product.images || [],
+      variants: product.variants || []
     });
     setEditingDefaultProductId(product._id);
     setIsDefaultProductFormOpen(true);
@@ -1018,7 +1083,7 @@ const SuperAdminMainpanel = () => {
             <h2 className="text-xl font-bold text-slate-800">Default Product Catalog</h2>
             <button 
               onClick={() => {
-                setDefaultProductForm({ name: '', description: '', basePrice: 0, unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true });
+                setDefaultProductForm({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true, images: [], variants: [] });
                 setEditingDefaultProductId(null);
                 setIsDefaultProductFormOpen(!isDefaultProductFormOpen);
               }} 
@@ -1029,52 +1094,106 @@ const SuperAdminMainpanel = () => {
           </div>
 
           {isDefaultProductFormOpen && (
-            <form onSubmit={handleSaveDefaultProduct} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8 space-y-4 animate-fadeIn">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Product Name</label>
-                  <input type="text" required value={defaultProductForm.name} onChange={e => setDefaultProductForm({...defaultProductForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 1kg Sugar" />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity overflow-y-auto">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+                {/* Modal Header */}
+                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
+                  <h3 className="text-2xl font-extrabold text-slate-800">{editingDefaultProductId ? 'Edit Default Product' : 'Add New Default Product'}</h3>
+                  <button onClick={() => { setIsDefaultProductFormOpen(false); setEditingDefaultProductId(null); }} className="text-slate-400 hover:text-red-500 transition-colors text-3xl leading-none">&times;</button>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Category</label>
-                  <input type="text" value={defaultProductForm.category} onChange={e => setDefaultProductForm({...defaultProductForm, category: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Groceries" />
+
+                {/* Modal Body */}
+                <div className="p-8 overflow-y-auto flex-1">
+                  <form id="defaultProductForm" onSubmit={handleSaveDefaultProduct} className="space-y-8">
+                    
+                    {/* Basic Info */}
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-lg border-b border-slate-100 pb-2 text-slate-800">Basic Info</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div><label className="block text-sm font-semibold mb-1 text-slate-700">Product Name <span className="text-red-500">*</span></label><input required value={defaultProductForm.name} onChange={e=>setDefaultProductForm({...defaultProductForm, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow" placeholder="e.g. Fresh Tomatoes" /></div>
+                        <div><label className="block text-sm font-semibold mb-1 text-slate-700">Category</label><input type="text" value={defaultProductForm.category} onChange={e=>setDefaultProductForm({...defaultProductForm, category: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow bg-white" placeholder="e.g. Groceries" /></div>
+                        <div><label className="block text-sm font-semibold mb-1 text-slate-700">Store Types (comma separated) <span className="text-red-500">*</span></label><input type="text" required value={defaultProductForm.storeTypes} onChange={e => setDefaultProductForm({...defaultProductForm, storeTypes: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow" placeholder="e.g. kirana, vegetable" /></div>
+                        <div className="md:col-span-2"><label className="block text-sm font-semibold mb-1 text-slate-700">Description</label><textarea rows="3" value={defaultProductForm.description} onChange={e=>setDefaultProductForm({...defaultProductForm, description: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow resize-none" placeholder="Provide product details..." /></div>
+                      </div>
+                    </div>
+
+                    {/* Pricing & Inventory */}
+                    <div className="space-y-4">
+                      <h4 className="font-bold text-lg border-b border-slate-100 pb-2 text-slate-800">Pricing & Default Inventory</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div><label className="block text-sm font-semibold mb-1 text-slate-700">Base Price (₹) <span className="text-red-500">*</span></label><input type="number" required={defaultProductForm.variants.length === 0} value={defaultProductForm.basePrice} onChange={e=>setDefaultProductForm({...defaultProductForm, basePrice: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow" placeholder="0.00" /></div>
+                        <div><label className="block text-sm font-semibold mb-1 text-slate-700">Total Stock</label><input type="number" value={defaultProductForm.totalStock} onChange={e=>setDefaultProductForm({...defaultProductForm, totalStock: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow disabled:bg-slate-50" disabled={defaultProductForm.variants.length > 0} placeholder={defaultProductForm.variants.length > 0 ? "Calculated from variants" : "0"} /></div>
+                        <div><label className="block text-sm font-semibold mb-1 text-slate-700">Selling Unit Type</label>
+                          <select value={defaultProductForm.unitType} onChange={e=>setDefaultProductForm({...defaultProductForm, unitType: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow bg-white">
+                            <option value="piece">Piece</option><option value="kg">Kg</option><option value="gram">Gram</option><option value="plate">Plate</option><option value="pack">Pack</option><option value="size">Size</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Images */}
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <h4 className="font-bold text-lg text-slate-800">Product Images</h4>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => { setIsMediaLibraryOpen(true); fetchMedia(); }} className="text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">View Media Library</button>
+                          <label className="cursor-pointer text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+                            + Upload Images
+                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleDefaultProductImageUpload} disabled={loading} />
+                          </label>
+                        </div>
+                      </div>
+                      {defaultProductForm.images.length === 0 && <p className="text-sm text-slate-500 italic">No images added. A placeholder will be shown.</p>}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        {defaultProductForm.images.map((img, idx) => (
+                          <div key={idx} className="relative group rounded-xl border border-slate-200 overflow-hidden bg-slate-50 aspect-square flex items-center justify-center">
+                            <img src={img} alt={`Product ${idx+1}`} className="w-full h-full object-cover" />
+                            <button type="button" onClick={()=>handleRemoveImage(idx)} className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-600">&times;</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Variants */}
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <h4 className="font-bold text-lg text-slate-800">Product Variants</h4>
+                        <button type="button" onClick={handleAddVariant} className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">+ Add Variant</button>
+                      </div>
+                      {defaultProductForm.variants.length === 0 ? (
+                        <p className="text-sm text-slate-500 italic">No variants added. The product will use the base price and total stock.</p>
+                      ) : defaultProductForm.variants.map((v, idx) => (
+                        <div key={idx} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 relative group transition-colors hover:border-slate-300">
+                          <button type="button" onClick={()=>handleRemoveVariant(idx)} className="absolute top-3 right-4 text-red-400 hover:text-red-600 font-bold text-xl leading-none">&times;</button>
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-2">
+                            <div className="md:col-span-2"><label className="block text-xs font-semibold mb-1 text-slate-600">Variant Name <span className="text-red-500">*</span></label><input type="text" placeholder="e.g. 500g, Red, Size L" value={v.name} onChange={e=>handleUpdateVariant(idx, 'name', e.target.value)} required className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-600" /></div>
+                            <div><label className="block text-xs font-semibold mb-1 text-slate-600">Price (₹) <span className="text-red-500">*</span></label><input type="number" placeholder="Price" value={v.price} onChange={e=>handleUpdateVariant(idx, 'price', e.target.value)} required className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-600" /></div>
+                            <div><label className="block text-xs font-semibold mb-1 text-slate-600">Stock <span className="text-red-500">*</span></label><input type="number" placeholder="Qty" value={v.stock} onChange={e=>handleUpdateVariant(idx, 'stock', e.target.value)} required className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-600" /></div>
+                            <div><label className="block text-xs font-semibold mb-1 text-slate-600">SKU Code</label><input type="text" placeholder="Optional" value={v.sku} onChange={e=>handleUpdateVariant(idx, 'sku', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-600" /></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-4 border-t border-slate-100 pt-4">
+                      <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                        <input type="checkbox" checked={defaultProductForm.isActive} onChange={e => setDefaultProductForm({...defaultProductForm, isActive: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                        Active (Visible to Stores)
+                      </label>
+                    </div>
+                  </form>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Base Price (₹)</label>
-                  <input type="number" required value={defaultProductForm.basePrice} onChange={e => setDefaultProductForm({...defaultProductForm, basePrice: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 50" />
+
+                {/* Modal Footer Controls */}
+                <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-4 rounded-b-3xl sticky bottom-0">
+                  <button type="button" onClick={() => { setIsDefaultProductFormOpen(false); setEditingDefaultProductId(null); }} className="px-6 py-2.5 font-bold text-slate-500 hover:text-slate-800 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" form="defaultProductForm" disabled={loading} className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100 disabled:opacity-50">
+                    {editingDefaultProductId ? 'Update Default Product' : 'Save Default Product'}
+                  </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Store Types (comma separated)</label>
-                  <input type="text" required value={defaultProductForm.storeTypes} onChange={e => setDefaultProductForm({...defaultProductForm, storeTypes: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. kirana, vegetable, grocery" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Unit Type</label>
-                  <select value={defaultProductForm.unitType} onChange={e => setDefaultProductForm({...defaultProductForm, unitType: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                    <option value="piece">Piece</option>
-                    <option value="kg">Kg</option>
-                    <option value="gram">Gram</option>
-                    <option value="pack">Pack</option>
-                    <option value="plate">Plate</option>
-                    <option value="size">Size</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
-                <textarea value={defaultProductForm.description} onChange={e => setDefaultProductForm({...defaultProductForm, description: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none" placeholder="Product details..."></textarea>
-              </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
-                  <input type="checkbox" checked={defaultProductForm.isActive} onChange={e => setDefaultProductForm({...defaultProductForm, isActive: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
-                  Active (Visible to Stores)
-                </label>
-              </div>
-              <button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition mt-2 shadow-lg shadow-blue-200">
-                {editingDefaultProductId ? 'Update Default Product' : 'Save Default Product'}
-              </button>
-            </form>
+            </div>
           )}
 
           <div className="overflow-x-auto">
