@@ -58,6 +58,8 @@ const ManageProduct = ({ token, stores, onLogout }) => {
           name, 
           price: Number(price), 
           stock: Number(stock), 
+          basePrice: Number(price),
+          totalStock: Number(stock),
           storeId: currentStore._id // Explicitly bind product to this store
         })
       });
@@ -83,8 +85,8 @@ const ManageProduct = ({ token, stores, onLogout }) => {
 
   const handleEdit = (product) => {
     setName(product.name);
-    setPrice(product.price);
-    setStock(product.stock || 0);
+    setPrice(product.basePrice !== undefined ? product.basePrice : product.price);
+    setStock(product.totalStock !== undefined ? product.totalStock : (product.stock || 0));
     setEditingId(product._id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -155,7 +157,7 @@ const ManageProduct = ({ token, stores, onLogout }) => {
           <div className="col-span-5">Product Name</div><div className="col-span-3">Price</div><div className="col-span-2">Stock</div><div className="col-span-2 text-right">Actions</div>
         </div>
         {products.length === 0 ? (<div className="p-8 text-center text-slate-500 font-medium">No products found. Add your first product above!</div>) : (
-          products.map(p => (<div key={p._id} className="grid grid-cols-12 gap-4 p-4 border-b border-slate-100 items-center hover:bg-slate-50 transition"><div className="col-span-5 font-semibold text-slate-800">{p.name}</div><div className="col-span-3 text-green-600 font-bold">₹{p.price}</div><div className="col-span-2 text-slate-600">{p.stock} units</div><div className="col-span-2 text-right flex justify-end gap-2"><button onClick={() => handleEdit(p)} className="text-blue-500 hover:text-blue-700 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg transition">Edit</button><button onClick={() => handleDelete(p._id)} className="text-red-500 hover:text-red-700 text-sm font-bold bg-red-50 px-3 py-1.5 rounded-lg transition">Delete</button></div></div>))
+          products.map(p => (<div key={p._id} className="grid grid-cols-12 gap-4 p-4 border-b border-slate-100 items-center hover:bg-slate-50 transition"><div className="col-span-5 font-semibold text-slate-800">{p.name}</div><div className="col-span-3 text-green-600 font-bold">₹{p.basePrice !== undefined ? p.basePrice : p.price}</div><div className="col-span-2 text-slate-600">{p.totalStock !== undefined ? p.totalStock : (p.stock || 0)} units</div><div className="col-span-2 text-right flex justify-end gap-2"><button onClick={() => handleEdit(p)} className="text-blue-500 hover:text-blue-700 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg transition">Edit</button><button onClick={() => handleDelete(p._id)} className="text-red-500 hover:text-red-700 text-sm font-bold bg-red-50 px-3 py-1.5 rounded-lg transition">Delete</button></div></div>))
         )}
       </div>
     </div>
