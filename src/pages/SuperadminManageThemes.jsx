@@ -194,7 +194,7 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
   };
 
   return (
-    <AdminLayout stores={stores} onLogout={handleLogout} headerTitle="Superadmin - Manage Themes" userRole="superadmin">
+    
       <div className="w-full px-6 py-10 max-w-7xl mx-auto">
         
         {/* Header Section */}
@@ -359,7 +359,6 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
           </div>
         )}
       </div>
-    </AdminLayout>
   );
 };
 
