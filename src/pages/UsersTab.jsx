@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 
-const UsersTab = ({ users, setUsers }) => {
+const UsersTab = () => {
   const [error, setError] = useState('');
+  const { users, setUsers } = useOutletContext();
 
   const handleEditUser = (user) => {
     alert(`Edit functionality for ${user.name} (${user.email}) coming soon!`);

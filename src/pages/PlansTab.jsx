@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 
-const PlansTab = ({ plans, setPlans }) => {
+const PlansTab = () => {
   const [isPlanFormOpen, setIsPlanFormOpen] = useState(false);
   const [error, setError] = useState('');
+  const { plans, setPlans } = useOutletContext();
   const [planForm, setPlanForm] = useState({
     name: 'Starter', price: 0, maxProducts: 50, storeLimit: 1, storageLimit: 500, customDomain: false, freeSsl: false, securityHeaders: false, basicAnalytics: false, advanceAnalytics: false, whatsappOrderButton: false, sevenDaysTrial: true, themes: false, prioritySupport: false
   });

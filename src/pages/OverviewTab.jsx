@@ -1,6 +1,9 @@
 import React from 'react';
+import { useOutletContext } from 'react-router-dom';
 
-const OverviewTab = ({ users, stores }) => {
+const OverviewTab = () => {
+  const { users, stores } = useOutletContext();
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 
-const SettingsTab = ({ platformSettings, setPlatformSettings }) => {
+const SettingsTab = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingMiniLogo, setUploadingMiniLogo] = useState(false);
   const [uploadingGridIndex, setUploadingGridIndex] = useState(null);
   const [settingsStatus, setSettingsStatus] = useState('');
+  const { platformSettings, setPlatformSettings } = useOutletContext();
 
   const handleSaveSettings = async (newSettings) => {
     try {

@@ -1,6 +1,9 @@
 import React from 'react';
+import { useOutletContext } from 'react-router-dom';
 
-const StoresTab = ({ stores, plans }) => {
+const StoresTab = () => {
+  const { stores, plans } = useOutletContext();
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-200"><h2 className="text-xl font-bold text-slate-800">Active Stores</h2></div>
