@@ -5,15 +5,15 @@ import Mainpanel from './pages/superAdminMainpanel';
 import SuperadminManageThemes from './pages/SuperadminManageThemes';
 
 // Import tab components for routing
-import OverviewTab from './pages/tabs/OverviewTab';
-import PlansTab from './pages/tabs/PlansTab';
-import UsersTab from './pages/tabs/UsersTab';
-import StoresTab from './pages/tabs/StoresTab';
-import PoliciesTab from './pages/tabs/PoliciesTab';
-import DefaultProductsTab from './pages/tabs/DefaultProductsTab';
-import PaymentsTab from './pages/tabs/PaymentsTab';
-import SocialsTab from './pages/tabs/SocialsTab';
-import SettingsTab from './pages/tabs/SettingsTab';
+import OverviewTab from './pages/OverviewTab';
+import PlansTab from './pages/PlansTab';
+import UsersTab from './pages/UsersTab';
+import StoresTab from './pages/StoresTab';
+import PoliciesTab from './pages/PoliciesTab';
+import DefaultProductsTab from './pages/DefaultProductsTab';
+import PaymentsTab from './pages/PaymentsTab';
+import SocialsTab from './pages/SocialsTab';
+import SettingsTab from './pages/SettingsTab';
 
 // Authentication Wrapper Component
 const ProtectedRoute = ({ children }) => {
