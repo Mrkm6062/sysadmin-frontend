@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2, Settings, Package } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2, Settings, Package, Palette } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -75,6 +75,7 @@ const SuperAdminMainpanel = () => {
     { id: 'stores', name: 'Active Stores', icon: <Store size={20} /> },
     { id: 'policies', name: 'Platform Policies', icon: <FileText size={20} /> },
     { id: 'default-products', name: 'Default Catalog', icon: <Package size={20} /> },
+    { id: 'themes', name: 'Manage Themes', icon: <Palette size={20} />, path: '/superadmin/themes' },
     { id: 'payments', name: 'Payment Gateway', icon: <CreditCard size={20} /> },
     { id: 'socials', name: 'Global Social Links', icon: <LinkIcon size={20} /> },
     { id: 'settings', name: 'Dashboard Settings', icon: <Settings size={20} /> },
@@ -683,7 +684,14 @@ const SuperAdminMainpanel = () => {
           {menuItems.map(item => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+              onClick={() => { 
+                if (item.path) {
+                  navigate(item.path);
+                } else {
+                  setActiveTab(item.id); 
+                  setIsMobileMenuOpen(false); 
+                }
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                 activeTab === item.id 
                   ? 'bg-blue-600 text-white font-semibold shadow-lg shadow-blue-900/20' 

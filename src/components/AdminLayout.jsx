@@ -30,7 +30,7 @@ const AdminLayout = ({ stores, onLogout, headerTitle = "Overview Dashboard", use
     { name: 'Customers', icon: <Users size={20} />, path: '#' },
     { name: 'Delivery', icon: <Truck size={20} />, path: '#' },
     { name: 'Analytics', icon: <BarChart3 size={20} />, path: '#' },
-    ...(userRole === 'superadmin' ? [{ name: 'Manage Themes', icon: <Palette size={20} />, path: '/superadmin/themes' }] : []),
+    { name: 'Manage Themes', icon: <Palette size={20} />, path: '/superadmin/themes' },
     { name: 'Settings', icon: <Settings size={20} />, path: '#' },
   ];
 
