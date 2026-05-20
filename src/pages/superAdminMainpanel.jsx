@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2, Settings, Package, Palette } from 'lucide-react';
-
-import OverviewTab from './OverviewTab';
-import PlansTab from './PlansTab';
-import UsersTab from './UsersTab';
-import StoresTab from './StoresTab';
-import PoliciesTab from './PoliciesTab';
-import DefaultProductsTab from './DefaultProductsTab';
-import PaymentsTab from './PaymentsTab';
-import SocialsTab from './SocialsTab';
-import SettingsTab from './SettingsTab';
+import { useNavigate, Outlet, useLocation } from 'react-router-dom';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Settings, Package, Palette } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -18,7 +8,6 @@ const SuperAdminMainpanel = () => {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
 
@@ -26,16 +15,16 @@ const SuperAdminMainpanel = () => {
   const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [] });
 
   const menuItems = [
-    { id: 'overview', name: 'Overview', icon: <LayoutDashboard size={20} /> },
-    { id: 'plans', name: 'Subscription Plans', icon: <CreditCard size={20} /> },
-    { id: 'users', name: 'Platform Users', icon: <Users size={20} /> },
-    { id: 'stores', name: 'Active Stores', icon: <Store size={20} /> },
-    { id: 'policies', name: 'Platform Policies', icon: <FileText size={20} /> },
-    { id: 'default-products', name: 'Default Catalog', icon: <Package size={20} /> },
-    { id: 'themes', name: 'Manage Themes', icon: <Palette size={20} />, path: '/superadmin/themes' },
-    { id: 'payments', name: 'Payment Gateway', icon: <CreditCard size={20} /> },
-    { id: 'socials', name: 'Global Social Links', icon: <LinkIcon size={20} /> },
-    { id: 'settings', name: 'Dashboard Settings', icon: <Settings size={20} /> },
+    { id: 'overview', name: 'Overview', path: '/dashboard/overview', icon: <LayoutDashboard size={20} /> },
+    { id: 'plans', name: 'Subscription Plans', path: '/dashboard/plans', icon: <CreditCard size={20} /> },
+    { id: 'users', name: 'Platform Users', path: '/dashboard/users', icon: <Users size={20} /> },
+    { id: 'stores', name: 'Active Stores', path: '/dashboard/stores', icon: <Store size={20} /> },
+    { id: 'policies', name: 'Platform Policies', path: '/dashboard/policies', icon: <FileText size={20} /> },
+    { id: 'default-products', name: 'Default Catalog', path: '/dashboard/default-products', icon: <Package size={20} /> },
+    { id: 'themes', name: 'Manage Themes', path: '/dashboard/themes', icon: <Palette size={20} /> },
+    { id: 'payments', name: 'Payment Gateway', path: '/dashboard/payments', icon: <CreditCard size={20} /> },
+    { id: 'socials', name: 'Global Social Links', path: '/dashboard/socials', icon: <LinkIcon size={20} /> },
+    { id: 'settings', name: 'Dashboard Settings', path: '/dashboard/settings', icon: <Settings size={20} /> },
   ];
   const navigate = useNavigate();
 
@@ -93,6 +82,9 @@ const SuperAdminMainpanel = () => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-xl text-slate-500 bg-slate-50">Loading Platform Data...</div>;
 
+  const location = useLocation();
+  const activeTabId = location.pathname.split('/')[2] || 'overview';
+
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 w-full overflow-hidden text-left">
       {/* Mobile Menu Overlay */}
@@ -120,16 +112,12 @@ const SuperAdminMainpanel = () => {
           {menuItems.map(item => (
             <button
               key={item.id}
-              onClick={() => { 
-                if (item.path) {
-                  navigate(item.path);
-                } else {
-                  setActiveTab(item.id); 
-                  setIsMobileMenuOpen(false); 
-                }
+              onClick={() => {
+                navigate(item.path);
+                setIsMobileMenuOpen(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                activeTab === item.id 
+                activeTabId === item.id
                   ? 'bg-blue-600 text-white font-semibold shadow-lg shadow-blue-900/20' 
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`}
@@ -157,7 +145,7 @@ const SuperAdminMainpanel = () => {
               <Menu size={24} />
             </button>
             <span className="text-xl font-bold text-slate-800">
-              {menuItems.find(m => m.id === activeTab)?.name || 'Dashboard'}
+              {menuItems.find(m => m.id === activeTabId)?.name || 'Dashboard'}
             </span>
           </div>
           
@@ -171,15 +159,7 @@ const SuperAdminMainpanel = () => {
         <main className="w-full p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
         {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">{error}</div>}
 
-        {activeTab === 'overview' && <OverviewTab users={users} stores={stores} />}
-        {activeTab === 'plans' && <PlansTab plans={plans} setPlans={setPlans} />}
-        {activeTab === 'users' && <UsersTab users={users} setUsers={setUsers} />}
-        {activeTab === 'stores' && <StoresTab stores={stores} plans={plans} />}
-        {activeTab === 'policies' && <PoliciesTab />}
-        {activeTab === 'default-products' && <DefaultProductsTab />}
-        {activeTab === 'payments' && <PaymentsTab />}
-        {activeTab === 'socials' && <SocialsTab />}
-        {activeTab === 'settings' && <SettingsTab platformSettings={platformSettings} setPlatformSettings={setPlatformSettings} />}
+        <Outlet context={{ users, setUsers, stores, plans, setPlans, platformSettings, setPlatformSettings }} />
       </main>
       </div>
     </div>
