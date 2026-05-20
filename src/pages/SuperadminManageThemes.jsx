@@ -32,7 +32,8 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
 
   const [formData, setFormData] = useState(initialFormState);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+  const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+  const API_BASE_URL = envUrl;
 
   const categoryOptions = ["restaurant", "nasta", "vegetable", "ecommerce", "clothing", "kirana", "general"];
 
