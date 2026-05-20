@@ -195,7 +195,7 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
 
   return (
     
-      <div className="w-full px-6 py-10 max-w-7xl mx-auto">
+      <div className="w-full px-6 py-10 mx-auto">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
