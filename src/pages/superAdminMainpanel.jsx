@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Trash2, Settings, Package, Palette } from 'lucide-react';
 
-import OverviewTab from './tabs/OverviewTab';
-import PlansTab from './tabs/PlansTab';
-import UsersTab from './tabs/UsersTab';
-import StoresTab from './tabs/StoresTab';
-import PoliciesTab from './tabs/PoliciesTab';
-import DefaultProductsTab from './tabs/DefaultProductsTab';
-import PaymentsTab from './tabs/PaymentsTab';
-import SocialsTab from './tabs/SocialsTab';
-import SettingsTab from './tabs/SettingsTab';
+import OverviewTab from './OverviewTab';
+import PlansTab from './PlansTab';
+import UsersTab from './UsersTab';
+import StoresTab from './StoresTab';
+import PoliciesTab from './PoliciesTab';
+import DefaultProductsTab from './DefaultProductsTab';
+import PaymentsTab from './PaymentsTab';
+import SocialsTab from './SocialsTab';
+import SettingsTab from './SettingsTab';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
