@@ -8,10 +8,11 @@ import {
   Users, 
   Truck, 
   BarChart3, 
-  Settings 
+  Settings,
+  Palette
 } from 'lucide-react';
 
-const AdminLayout = ({ stores, onLogout, headerTitle = "Overview Dashboard", children }) => {
+const AdminLayout = ({ stores, onLogout, headerTitle = "Overview Dashboard", userRole, children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -29,6 +30,7 @@ const AdminLayout = ({ stores, onLogout, headerTitle = "Overview Dashboard", chi
     { name: 'Customers', icon: <Users size={20} />, path: '#' },
     { name: 'Delivery', icon: <Truck size={20} />, path: '#' },
     { name: 'Analytics', icon: <BarChart3 size={20} />, path: '#' },
+    ...(userRole === 'superadmin' ? [{ name: 'Manage Themes', icon: <Palette size={20} />, path: '/superadmin/themes' }] : []),
     { name: 'Settings', icon: <Settings size={20} />, path: '#' },
   ];
 
