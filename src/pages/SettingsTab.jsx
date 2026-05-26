@@ -6,6 +6,9 @@ const SettingsTab = () => {
   const [uploadingMiniLogo, setUploadingMiniLogo] = useState(false);
   const [uploadingGridIndex, setUploadingGridIndex] = useState(null);
   const [settingsStatus, setSettingsStatus] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState('');
+  const [activeXhr, setActiveXhr] = useState(null);
   const { platformSettings, setPlatformSettings } = useOutletContext();
 
   const handleSaveSettings = async (newSettings) => {
@@ -21,31 +24,160 @@ const SettingsTab = () => {
     if (!file) return;
     if (type === 'logo') setUploadingLogo(true); else if (type === 'mini') setUploadingMiniLogo(true); else setUploadingGridIndex(index);
     setSettingsStatus(`Uploading...`);
+    setUploadProgress(0);
+    setUploadSpeed('Calculating...');
+
     const uploadData = new FormData(); uploadData.append('storeId', '000000000000000000000000'); uploadData.append('images', file);
-    try {
-      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
-      const res = await fetch(`${envUrl}/api/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}` }, body: uploadData });
-      if (res.ok) {
-        const data = await res.json();
-        const url = data.urls[0];
-        if (type === 'logo') { setPlatformSettings(prev => ({ ...prev, mainLogoUrl: url })); await handleSaveSettings({ mainLogoUrl: url }); }
-        else if (type === 'mini') { setPlatformSettings(prev => ({ ...prev, miniLogoUrl: url })); await handleSaveSettings({ miniLogoUrl: url }); }
-        else {
-          const currentGrid = platformSettings.loginImageGrid || []; const newGrid = [...(currentGrid.length > 0 ? currentGrid : Array(9).fill(''))]; while (newGrid.length < 9) newGrid.push(''); newGrid[index] = url;
-          setPlatformSettings(prev => ({ ...prev, loginImageGrid: newGrid })); await handleSaveSettings({ loginImageGrid: newGrid });
+    
+    const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+    const startTime = Date.now();
+    let lastLoaded = 0;
+    let lastTime = startTime;
+
+    const xhr = new XMLHttpRequest();
+    setActiveXhr(xhr);
+    xhr.open('POST', `${envUrl}/api/upload`);
+    xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('superadmin_token')}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percentComplete);
+
+        const currentTime = Date.now();
+        const timeDiff = (currentTime - lastTime) / 1000;
+        
+        if (timeDiff > 0.5) {
+          const bytesDiff = event.loaded - lastLoaded;
+          const speedBps = bytesDiff / timeDiff;
+          let speedText = '';
+          if (speedBps > 1024 * 1024) speedText = (speedBps / (1024 * 1024)).toFixed(2) + ' MB/s';
+          else if (speedBps > 1024) speedText = (speedBps / 1024).toFixed(2) + ' KB/s';
+          else speedText = Math.round(speedBps) + ' B/s';
+          
+          setUploadSpeed(speedText);
+          lastLoaded = event.loaded;
+          lastTime = currentTime;
         }
-      } else { setSettingsStatus('Upload failed.'); }
-    } catch (err) { setSettingsStatus('Error during upload.'); } finally {
+      }
+    };
+
+    xhr.onload = async () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = JSON.parse(xhr.responseText);
+        if (data.urls && data.urls.length > 0) {
+          const url = data.urls[0];
+          if (type === 'logo') { setPlatformSettings(prev => ({ ...prev, mainLogoUrl: url })); await handleSaveSettings({ mainLogoUrl: url }); }
+          else if (type === 'mini') { setPlatformSettings(prev => ({ ...prev, miniLogoUrl: url })); await handleSaveSettings({ miniLogoUrl: url }); }
+          else {
+            const currentGrid = platformSettings.loginImageGrid || []; const newGrid = [...(currentGrid.length > 0 ? currentGrid : Array(9).fill(''))]; while (newGrid.length < 9) newGrid.push(''); newGrid[index] = url;
+            setPlatformSettings(prev => ({ ...prev, loginImageGrid: newGrid })); await handleSaveSettings({ loginImageGrid: newGrid });
+          }
+        } else { setSettingsStatus('Upload failed.'); }
+      } else {
+        let data;
+        try { data = JSON.parse(xhr.responseText); } catch (e) { data = { message: 'Upload Failed' }; }
+        setSettingsStatus(`Upload Error: ${data.message || 'Failed to upload'}`);
+      }
       if (type === 'logo') setUploadingLogo(false); else if (type === 'mini') setUploadingMiniLogo(false); else setUploadingGridIndex(null);
+      setActiveXhr(null);
+    };
+
+    xhr.onerror = () => {
+      setSettingsStatus('Upload Error: Network failure');
+      if (type === 'logo') setUploadingLogo(false); else if (type === 'mini') setUploadingMiniLogo(false); else setUploadingGridIndex(null);
+      setActiveXhr(null);
+    };
+
+    xhr.onabort = () => {
+      setSettingsStatus('Upload canceled.');
+      if (type === 'logo') setUploadingLogo(false); else if (type === 'mini') setUploadingMiniLogo(false); else setUploadingGridIndex(null);
+      setActiveXhr(null);
+    };
+
+    xhr.send(uploadData);
+  };
+
+  const cancelUpload = () => {
+    if (activeXhr) {
+      activeXhr.abort();
     }
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"><h2 className="text-2xl font-bold mb-6 text-slate-800">Dashboard & Login Page Settings</h2>{settingsStatus && <p className="text-sm text-blue-600 mb-4 font-medium">{settingsStatus}</p>}
       <div className="space-y-8">
-        <div><h3 className="text-lg font-bold text-slate-800 mb-2">Main Platform Logo</h3><p className="text-sm text-slate-500 mb-4">This logo appears on the login page and tenant dashboards.</p><div className="flex items-center gap-6"><div className="w-48 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2"><img src={platformSettings.mainLogoUrl} alt="Main Logo Preview" className="max-w-full max-h-full object-contain" /></div><label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingLogo ? 'opacity-50' : ''}`}>{uploadingLogo ? 'Uploading...' : 'Change Logo'}<input type="file" accept="image/*" className="hidden" onChange={(e) => handleUpload(e.target.files[0], 'logo')} disabled={uploadingLogo} /></label></div></div>
-        <div><h3 className="text-lg font-bold text-slate-800 mb-2">Mini Logo (Collapsed Sidebar)</h3><p className="text-sm text-slate-500 mb-4">This logo appears when the sidebar is collapsed (e.g., G & B icon).</p><div className="flex items-center gap-6"><div className="w-24 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2">{platformSettings.miniLogoUrl ? <img src={platformSettings.miniLogoUrl} alt="Mini Logo Preview" className="max-w-full max-h-full object-contain" /> : <span className="text-slate-400 font-bold text-2xl">GB</span>}</div><label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingMiniLogo ? 'opacity-50' : ''}`}>{uploadingMiniLogo ? 'Uploading...' : 'Change Mini Logo'}<input type="file" accept="image/*" className="hidden" onChange={(e) => handleUpload(e.target.files[0], 'mini')} disabled={uploadingMiniLogo} /></label></div></div>
-        <div><h3 className="text-lg font-bold text-slate-800 mb-2">Login Page Image Grid</h3><p className="text-sm text-slate-500 mb-4">Upload exactly 9 images to populate the animated grid on the login page.</p><div className="grid grid-cols-3 gap-4 mb-4 max-w-md">{((platformSettings.loginImageGrid || []).length > 0 ? platformSettings.loginImageGrid : Array(9).fill('')).slice(0, 9).map((img, idx) => (<div key={idx} className="relative aspect-square bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center overflow-hidden group">{img ? <img src={img} className="absolute inset-0 w-full h-full object-cover" /> : <span className="text-slate-400 text-xs z-10">Image {idx + 1}</span>}<div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${img ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}><label className={`cursor-pointer px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition shadow-sm ${uploadingGridIndex === idx ? 'opacity-50 pointer-events-none' : ''}`}>{uploadingGridIndex === idx ? '...' : img ? 'Change' : 'Upload'}<input type="file" accept="image/*" className="hidden" onChange={(e) => { handleUpload(e.target.files[0], 'grid', idx); e.target.value = null; }} disabled={uploadingGridIndex !== null} /></label></div></div>))}</div></div>
+        <div>
+          <h3 className="text-lg font-bold text-slate-800 mb-2">Main Platform Logo</h3>
+          <p className="text-sm text-slate-500 mb-4">This logo appears on the login page and tenant dashboards.</p>
+          <div className="flex items-center gap-6">
+            <div className="w-48 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2">
+              <img src={platformSettings.mainLogoUrl} alt="Main Logo Preview" className="max-w-full max-h-full object-contain" />
+            </div>
+            <label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingLogo ? 'opacity-50 pointer-events-none' : ''}`}>
+              {uploadingLogo ? 'Uploading...' : 'Change Logo'}
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { handleUpload(e.target.files[0], 'logo'); e.target.value = null; }} disabled={uploadingLogo} />
+            </label>
+          </div>
+          {uploadingLogo && (
+            <div className="mt-4 bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn max-w-md">
+              <div className="flex justify-between items-center text-sm font-bold text-blue-800 mb-2">
+                <span>Uploading Logo... {uploadProgress}%</span>
+                <div className="flex items-center gap-3">
+                  <span>{uploadSpeed}</span>
+                  <button type="button" onClick={cancelUpload} className="px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 rounded text-xs font-bold transition-colors">Cancel</button>
+                </div>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden"><div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }}></div></div>
+            </div>
+          )}
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-bold text-slate-800 mb-2">Mini Logo (Collapsed Sidebar)</h3>
+          <p className="text-sm text-slate-500 mb-4">This logo appears when the sidebar is collapsed (e.g., G & B icon).</p>
+          <div className="flex items-center gap-6">
+            <div className="w-24 h-24 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2">
+              {platformSettings.miniLogoUrl ? <img src={platformSettings.miniLogoUrl} alt="Mini Logo Preview" className="max-w-full max-h-full object-contain" /> : <span className="text-slate-400 font-bold text-2xl">GB</span>}
+            </div>
+            <label className={`cursor-pointer px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition ${uploadingMiniLogo ? 'opacity-50 pointer-events-none' : ''}`}>
+              {uploadingMiniLogo ? 'Uploading...' : 'Change Mini Logo'}
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { handleUpload(e.target.files[0], 'mini'); e.target.value = null; }} disabled={uploadingMiniLogo} />
+            </label>
+          </div>
+          {uploadingMiniLogo && (
+            <div className="mt-4 bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn max-w-md">
+              <div className="flex justify-between items-center text-sm font-bold text-blue-800 mb-2">
+                <span>Uploading Mini Logo... {uploadProgress}%</span>
+                <div className="flex items-center gap-3">
+                  <span>{uploadSpeed}</span>
+                  <button type="button" onClick={cancelUpload} className="px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 rounded text-xs font-bold transition-colors">Cancel</button>
+                </div>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden"><div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }}></div></div>
+            </div>
+          )}
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-bold text-slate-800 mb-2">Login Page Image Grid</h3>
+          <p className="text-sm text-slate-500 mb-4">Upload exactly 9 images to populate the animated grid on the login page.</p>
+          
+          {uploadingGridIndex !== null && (
+            <div className="mb-4 bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn max-w-md">
+              <div className="flex justify-between items-center text-sm font-bold text-blue-800 mb-2">
+                <span>Uploading Image {uploadingGridIndex + 1}... {uploadProgress}%</span>
+                <div className="flex items-center gap-3">
+                  <span>{uploadSpeed}</span>
+                  <button type="button" onClick={cancelUpload} className="px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 rounded text-xs font-bold transition-colors">Cancel</button>
+                </div>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden"><div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }}></div></div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-4 mb-4 max-w-md">{((platformSettings.loginImageGrid || []).length > 0 ? platformSettings.loginImageGrid : Array(9).fill('')).slice(0, 9).map((img, idx) => (<div key={idx} className="relative aspect-square bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center overflow-hidden group">{img ? <img src={img} className="absolute inset-0 w-full h-full object-cover" /> : <span className="text-slate-400 text-xs z-10">Image {idx + 1}</span>}<div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${img ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}><label className={`cursor-pointer px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition shadow-sm ${uploadingGridIndex === idx ? 'opacity-50 pointer-events-none' : ''}`}>{uploadingGridIndex === idx ? '...' : img ? 'Change' : 'Upload'}<input type="file" accept="image/*" className="hidden" onChange={(e) => { handleUpload(e.target.files[0], 'grid', idx); e.target.value = null; }} disabled={uploadingGridIndex !== null} /></label></div></div>))}</div>
+        </div>
       </div>
     </div>
   );

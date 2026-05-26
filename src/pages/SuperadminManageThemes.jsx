@@ -16,6 +16,9 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
   const [status, setStatus] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState('');
+  const [activeXhr, setActiveXhr] = useState(null);
 
   const initialFormState = {
     name: '',
@@ -99,41 +102,85 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
     if (!file) return;
 
     const uploadData = new FormData();
-    // Note: Change 'image' below if your backend multer/upload middleware expects a different field name (like 'file')
-    uploadData.append('image', file); 
+    uploadData.append('storeId', '000000000000000000000000'); // Store in superadmin global folder
+    uploadData.append('images', file); 
 
     setLoading(true);
     setStatus('Uploading image...');
+    setUploadProgress(0);
+    setUploadSpeed('Calculating...');
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: uploadData
-      });
+    const startTime = Date.now();
+    let lastLoaded = 0;
+    let lastTime = startTime;
 
-      const data = await res.json();
+    const xhr = new XMLHttpRequest();
+    setActiveXhr(xhr);
+    xhr.open('POST', `${API_BASE_URL}/api/upload`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
-      if (res.ok) {
-        // Try to parse the image URL from common backend response structures
-        const imageUrl = data.url || data.secure_url || data.imageUrl || data.image; 
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percentComplete);
+
+        const currentTime = Date.now();
+        const timeDiff = (currentTime - lastTime) / 1000;
+        
+        if (timeDiff > 0.5) {
+          const bytesDiff = event.loaded - lastLoaded;
+          const speedBps = bytesDiff / timeDiff;
+          let speedText = '';
+          if (speedBps > 1024 * 1024) speedText = (speedBps / (1024 * 1024)).toFixed(2) + ' MB/s';
+          else if (speedBps > 1024) speedText = (speedBps / 1024).toFixed(2) + ' KB/s';
+          else speedText = Math.round(speedBps) + ' B/s';
+          
+          setUploadSpeed(speedText);
+          lastLoaded = event.loaded;
+          lastTime = currentTime;
+        }
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = JSON.parse(xhr.responseText);
+        const imageUrl = data.url || data.secure_url || data.imageUrl || data.image || (data.urls && data.urls[0]); 
         if (imageUrl) {
           setFormData({ ...formData, previewImage: imageUrl });
           setStatus('✅ Image uploaded successfully!');
           setTimeout(() => setStatus(''), 3000);
-        } else {
-          setStatus('❌ Upload successful, but unable to read the URL from response.');
-        }
+        } else setStatus('❌ Upload successful, but unable to read the URL from response.');
       } else {
+        let data;
+        try { data = JSON.parse(xhr.responseText); } catch (e) { data = { message: 'Upload Failed' }; }
         setStatus(`❌ Error: ${data.message || 'Failed to upload image'}`);
       }
-    } catch (err) {
-      setStatus(`❌ Error: ${err.message}`);
-    } finally {
       setLoading(false);
-      e.target.value = ''; // Reset input to allow re-uploading the same file if needed
+      setActiveXhr(null);
+      if (e.target) e.target.value = '';
+    };
+
+    xhr.onerror = () => {
+      setStatus('❌ Error: Network failure');
+      setLoading(false);
+      setActiveXhr(null);
+      if (e.target) e.target.value = '';
+    };
+
+    xhr.onabort = () => {
+      setStatus('Upload canceled.');
+      setLoading(false);
+      setActiveXhr(null);
+      if (e.target) e.target.value = '';
+    };
+
+    xhr.send(uploadData);
+  };
+
+  const cancelUpload = () => {
+    if (activeXhr) {
+      activeXhr.abort();
     }
   };
 
@@ -324,12 +371,27 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
                     type="file" 
                     accept="image/*"
                     onChange={handleImageUpload} 
-                    className="w-full md:w-auto px-4 py-2 border border-slate-200 rounded-xl focus:border-[#76b900] focus:ring-1 focus:ring-[#76b900] outline-none transition text-sm cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-[#76b900] hover:file:bg-green-100" 
+                    className="w-full md:w-auto px-4 py-2 border border-slate-200 rounded-xl focus:border-[#76b900] focus:ring-1 focus:ring-[#76b900] outline-none transition text-sm cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-[#76b900] hover:file:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    disabled={activeXhr !== null}
                   />
                   {formData.previewImage && (
                     <button type="button" onClick={() => setFormData({...formData, previewImage: ''})} className="px-4 py-2 text-red-500 hover:bg-red-50 rounded-xl transition text-sm font-bold">Remove Image</button>
                   )}
                 </div>
+                
+                {activeXhr && (
+                  <div className="mb-4 bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn max-w-sm">
+                    <div className="flex justify-between items-center text-sm font-bold text-blue-800 mb-2">
+                      <span>Uploading Image... {uploadProgress}%</span>
+                      <div className="flex items-center gap-3">
+                        <span>{uploadSpeed}</span>
+                        <button type="button" onClick={cancelUpload} className="px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 rounded text-xs font-bold transition-colors">Cancel</button>
+                      </div>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden"><div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }}></div></div>
+                  </div>
+                )}
+
                 {formData.previewImage ? (
                   <div className="w-full max-w-sm h-48 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 relative group">
                     <img src={formData.previewImage} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
