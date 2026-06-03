@@ -14,6 +14,7 @@ import DefaultProductsTab from './pages/DefaultProductsTab';
 import PaymentsTab from './pages/PaymentsTab';
 import SocialsTab from './pages/SocialsTab';
 import SettingsTab from './pages/SettingsTab';
+import StaffTab from './pages/StaffTab';
 
 // Authentication Wrapper Component
 const ProtectedRoute = ({ children }) => {
@@ -34,6 +35,7 @@ function App() {
           <Route path="overview" element={<OverviewTab />} />
           <Route path="plans" element={<PlansTab />} />
           <Route path="users" element={<UsersTab />} />
+          <Route path="staff" element={<StaffTab />} />
           <Route path="stores" element={<StoresTab />} />
           <Route path="policies" element={<PoliciesTab />} />
           <Route path="default-products" element={<DefaultProductsTab />} />

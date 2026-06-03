@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Settings, Package, Palette } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Settings, Package, Palette, UserPlus } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -18,6 +18,7 @@ const SuperAdminMainpanel = () => {
     { id: 'overview', name: 'Overview', path: '/dashboard/overview', icon: <LayoutDashboard size={20} /> },
     { id: 'plans', name: 'Subscription Plans', path: '/dashboard/plans', icon: <CreditCard size={20} /> },
     { id: 'users', name: 'Platform Users', path: '/dashboard/users', icon: <Users size={20} /> },
+    { id: 'staff', name: 'Staff Management', path: '/dashboard/staff', icon: <UserPlus size={20} /> },
     { id: 'stores', name: 'Active Stores', path: '/dashboard/stores', icon: <Store size={20} /> },
     { id: 'policies', name: 'Platform Policies', path: '/dashboard/policies', icon: <FileText size={20} /> },
     { id: 'default-products', name: 'Default Catalog', path: '/dashboard/default-products', icon: <Package size={20} /> },
