@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 
 const SuperAdminLogin = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState(1);
+  const [loginType, setLoginType] = useState('sysadmin'); // 'sysadmin' | 'employee'
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,12 @@ const SuperAdminLogin = ({ onLoginSuccess }) => {
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
       const API_BASE_URL = `${envUrl}/api/superadmin`;
       
-      const payload = step === 1 ? { email } : { email, otp };
+      let payload;
+      if (loginType === 'sysadmin') {
+        payload = { email, password, loginType: 'sysadmin' };
+      } else {
+        payload = step === 1 ? { email, loginType: 'employee' } : { email, otp, loginType: 'employee' };
+      }
       console.log(`Sending login request to: ${API_BASE_URL}/login`);
 
       const response = await fetch(`${API_BASE_URL}/login`, {
@@ -59,16 +66,27 @@ const SuperAdminLogin = ({ onLoginSuccess }) => {
       }
 
       if (response.ok) {
-        if (step === 1 && data.step === 'verify') {
-          setStep(2);
-          setCountdown(60); // Start 60-second countdown
-        } else if (step === 2 && data.token) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('superadmin_token', data.token); // Crucial for SuperAdminMainpanel checks
-          if (onLoginSuccess) onLoginSuccess(data.token);
-          navigate('/dashboard');
+        if (loginType === 'sysadmin') {
+          if (data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('superadmin_token', data.token);
+            if (onLoginSuccess) onLoginSuccess(data.token);
+            navigate('/dashboard');
+          } else {
+            throw new Error("Unexpected response from server.");
+          }
         } else {
-          throw new Error("Unexpected response from server.");
+          if (step === 1 && data.step === 'verify') {
+            setStep(2);
+            setCountdown(60); // Start 60-second countdown
+          } else if (step === 2 && data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('superadmin_token', data.token); // Crucial for SuperAdminMainpanel checks
+            if (onLoginSuccess) onLoginSuccess(data.token);
+            navigate('/dashboard');
+          } else {
+            throw new Error("Unexpected response from server.");
+          }
         }
       } else {
         setError(data.message || 'Verification failed');
@@ -93,7 +111,7 @@ const SuperAdminLogin = ({ onLoginSuccess }) => {
       const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, loginType: 'employee' })
       });
 
       const data = await response.json();
@@ -118,13 +136,44 @@ const SuperAdminLogin = ({ onLoginSuccess }) => {
           <p className="text-slate-500 mt-2">Sign in to manage Galibrand Cloud</p>
         </div>
 
+        <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
+          <button
+            type="button"
+            onClick={() => { setLoginType('sysadmin'); setStep(1); setError(''); }}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${loginType === 'sysadmin' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Sysadmin Login
+          </button>
+          <button
+            type="button"
+            onClick={() => { setLoginType('employee'); setStep(1); setError(''); }}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${loginType === 'employee' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Employee Login
+          </button>
+        </div>
+
         {error && <div className="mb-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm font-semibold text-center border border-red-100">{error}</div>}
 
-        {step === 1 ? (
+        {loginType === 'sysadmin' ? (
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Admin Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition" placeholder="staff@galibrand.cloud" />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition" placeholder="admin@galibrand.cloud" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition" placeholder="••••••••" />
+            </div>
+            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition disabled:opacity-70 mt-4 shadow-lg shadow-blue-200">
+              {loading ? 'Authenticating...' : 'Secure Login'}
+            </button>
+          </form>
+        ) : step === 1 ? (
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Employee Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition" placeholder="employee@galibrand.cloud" />
             </div>
             <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition disabled:opacity-70 mt-4 shadow-lg shadow-blue-200">
               {loading ? 'Sending OTP...' : 'Send Login OTP'}
