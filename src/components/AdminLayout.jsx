@@ -32,7 +32,7 @@ const AdminLayout = ({ stores, onLogout, headerTitle = "Overview Dashboard", use
     { name: 'Delivery', icon: <Truck size={20} />, path: '#' },
     { name: 'Analytics', icon: <BarChart3 size={20} />, path: '#' },
     { name: 'Manage Themes', icon: <Palette size={20} />, path: '/superadmin/themes' },
-    { name: 'Store Types', icon: <Layers size={20} />, path: '/superadmin/store-types' },
+
     { name: 'Settings', icon: <Settings size={20} />, path: '#' },
   ];
 

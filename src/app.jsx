@@ -15,6 +15,7 @@ import PaymentsTab from './pages/PaymentsTab';
 import SocialsTab from './pages/SocialsTab';
 import SettingsTab from './pages/SettingsTab';
 import StaffTab from './pages/StaffTab';
+import SuperadminManageStoreType from './pages/SuperadminManageStoreType';
 
 // Authentication Wrapper Component
 const ProtectedRoute = ({ children }) => {
@@ -43,6 +44,7 @@ function App() {
           <Route path="payments" element={<PaymentsTab />} />
           <Route path="socials" element={<SocialsTab />} />
           <Route path="settings" element={<SettingsTab />} />
+          <Route path="store-types" element={<SuperadminManageStoreType />} />
         </Route>
         
         {/* Redirect root and old dashboard URL to the new default */}
