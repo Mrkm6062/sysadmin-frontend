@@ -14,7 +14,7 @@ const SuperadminManageStoreType = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const token = localStorage.getItem('superadmin_token');
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
+  const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -23,7 +23,7 @@ const SuperadminManageStoreType = () => {
 
   const fetchStoreTypes = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/store-types`, {
+      const res = await fetch(`${envUrl}/api/store-types`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -54,7 +54,7 @@ const SuperadminManageStoreType = () => {
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const res = await fetch(`${envUrl}${endpoint}`, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ const SuperadminManageStoreType = () => {
     if (!window.confirm('Are you sure you want to delete this Store Type?')) return;
     
     try {
-      const res = await fetch(`${API_BASE_URL}/api/store-types/${id}`, {
+      const res = await fetch(`${envUrl}/api/store-types/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
