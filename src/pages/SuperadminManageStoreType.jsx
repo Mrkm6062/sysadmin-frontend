@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit2, Trash2, Plus, X } from 'lucide-react';
 
-const SuperadminManageStoreType = ({ token, onLogout }) => {
+const SuperadminManageStoreType = () => {
   const [storeTypes, setStoreTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
@@ -12,6 +12,7 @@ const SuperadminManageStoreType = ({ token, onLogout }) => {
   const [features, setFeatures] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const token = localStorage.getItem('superadmin_token');
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011';
 
@@ -118,8 +119,8 @@ const SuperadminManageStoreType = ({ token, onLogout }) => {
   };
 
   return (
-    <AdminLayout onLogout={onLogout} headerTitle="Manage Store Types">
-      <div className="p-6 mx-auto mt-6 max-w-7xl">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">Store Types</h2>
@@ -148,7 +149,7 @@ const SuperadminManageStoreType = ({ token, onLogout }) => {
                 {storeTypes.length === 0 ? (
                   <tr><td colSpan="5" className="py-8 text-center text-slate-500">No store types found.</td></tr>
                 ) : storeTypes.map(type => (
-                  <tr key={type._id} className="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+                  <tr key={type._id} className="hover:bg-slate-50 transition border-b border-slate-100">
                     <td className="py-4 px-6 text-sm font-mono text-slate-500">{type.storetypeId}</td>
                     <td className="py-4 px-6 font-bold text-slate-800">{type.name}</td>
                     <td className="py-4 px-6 text-sm text-slate-600">
@@ -209,7 +210,7 @@ const SuperadminManageStoreType = ({ token, onLogout }) => {
           {toast.message}
         </div>
       )}
-    </AdminLayout>
+    </div>
   );
 };
 

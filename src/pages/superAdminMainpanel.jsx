@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Settings, Package, Palette, UserPlus } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Settings, Package, Palette, UserPlus, Layers } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -21,7 +21,7 @@ const SuperAdminMainpanel = () => {
     { id: 'staff', name: 'Staff Management', path: '/dashboard/staff', icon: <UserPlus size={20} /> },
     { id: 'stores', name: 'Active Stores', path: '/dashboard/stores', icon: <Store size={20} /> },
     { id: 'policies', name: 'Platform Policies', path: '/dashboard/policies', icon: <FileText size={20} /> },
-    { id: 'store-types', name: 'Store Types', icon: <Layers size={20} />, path: '/superadmin/store-types' },
+    { id: 'store-types', name: 'Store Types', icon: <Layers size={20} />, path: '/dashboard/store-types' },
     { id: 'default-products', name: 'Default Catalog', path: '/dashboard/default-products', icon: <Package size={20} /> },
     { id: 'themes', name: 'Manage Themes', path: '/dashboard/themes', icon: <Palette size={20} /> },
     { id: 'payments', name: 'Payment Gateway', path: '/dashboard/payments', icon: <CreditCard size={20} /> },
