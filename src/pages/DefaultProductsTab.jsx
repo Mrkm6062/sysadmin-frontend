@@ -4,13 +4,33 @@ const DefaultProductsTab = () => {
   const [defaultProducts, setDefaultProducts] = useState([]);
   const [isDefaultProductFormOpen, setIsDefaultProductFormOpen] = useState(false);
   const [editingDefaultProductId, setEditingDefaultProductId] = useState(null);
-  const [defaultProductForm, setDefaultProductForm] = useState({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true, images: [], variants: [] });
+  const [defaultProductForm, setDefaultProductForm] = useState({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: '', category: '', isActive: true, images: [], variants: [] });
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [mediaImages, setMediaImages] = useState([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [uploadingProductImage, setUploadingProductImage] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [storeTypesList, setStoreTypesList] = useState([]);
+
+  useEffect(() => {
+    const fetchStoreTypes = async () => {
+      try {
+        const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+        const response = await fetch(`${envUrl}/api/store-types/active`);
+        if (response.ok) {
+          const data = await response.json();
+          setStoreTypesList(data);
+          if (data.length > 0) {
+            setDefaultProductForm(prev => ({ ...prev, storeTypes: prev.storeTypes || data[0].name }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load store types", err);
+      }
+    };
+    fetchStoreTypes();
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -95,7 +115,7 @@ const DefaultProductsTab = () => {
   };
 
   const editDefaultProduct = (product) => {
-    setDefaultProductForm({ name: product.name || '', description: product.description || '', basePrice: product.basePrice || '', totalStock: product.totalStock !== undefined ? product.totalStock : (product.stock || ''), unitType: product.unitType || 'piece', storeTypes: (product.storeTypes || []).join(', '), category: product.category || '', isActive: product.isActive !== false, images: product.images || [], variants: product.variants || [] });
+    setDefaultProductForm({ name: product.name || '', description: product.description || '', basePrice: product.basePrice || '', totalStock: product.totalStock !== undefined ? product.totalStock : (product.stock || ''), unitType: product.unitType || 'piece', storeTypes: (product.storeTypes && product.storeTypes.length > 0) ? product.storeTypes[0] : (storeTypesList.length > 0 ? storeTypesList[0].name : ''), category: product.category || '', isActive: product.isActive !== false, images: product.images || [], variants: product.variants || [] });
     setEditingDefaultProductId(product._id);
     setIsDefaultProductFormOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -118,7 +138,7 @@ const DefaultProductsTab = () => {
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-slate-800">Default Product Catalog</h2>
-        <button onClick={() => { setDefaultProductForm({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: 'kirana', category: '', isActive: true, images: [], variants: [] }); setEditingDefaultProductId(null); setIsDefaultProductFormOpen(!isDefaultProductFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
+        <button onClick={() => { setDefaultProductForm({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: storeTypesList.length > 0 ? storeTypesList[0].name : '', category: '', isActive: true, images: [], variants: [] }); setEditingDefaultProductId(null); setIsDefaultProductFormOpen(!isDefaultProductFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
           {isDefaultProductFormOpen ? 'Cancel' : '+ Add Default Product'}
         </button>
       </div>
@@ -136,7 +156,11 @@ const DefaultProductsTab = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div><label className="block text-sm font-semibold mb-1 text-slate-700">Product Name <span className="text-red-500">*</span></label><input required value={defaultProductForm.name} onChange={e=>setDefaultProductForm({...defaultProductForm, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow" placeholder="e.g. Fresh Tomatoes" /></div>
                     <div><label className="block text-sm font-semibold mb-1 text-slate-700">Category</label><input type="text" value={defaultProductForm.category} onChange={e=>setDefaultProductForm({...defaultProductForm, category: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow bg-white" placeholder="e.g. Groceries" /></div>
-                    <div><label className="block text-sm font-semibold mb-1 text-slate-700">Store Types (comma separated) <span className="text-red-500">*</span></label><input type="text" required value={defaultProductForm.storeTypes} onChange={e => setDefaultProductForm({...defaultProductForm, storeTypes: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow" placeholder="e.g. kirana, vegetable" /></div>
+                    <div><label className="block text-sm font-semibold mb-1 text-slate-700">Store Type <span className="text-red-500">*</span></label>
+                      <select required value={defaultProductForm.storeTypes} onChange={e => setDefaultProductForm({...defaultProductForm, storeTypes: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow bg-white">
+                        {storeTypesList.length > 0 ? storeTypesList.map(st => <option key={st._id} value={st.name}>{st.name}</option>) : <option value="kirana">Kirana (Default)</option>}
+                      </select>
+                    </div>
                     <div className="md:col-span-2"><label className="block text-sm font-semibold mb-1 text-slate-700">Description</label><textarea rows="3" value={defaultProductForm.description} onChange={e=>setDefaultProductForm({...defaultProductForm, description: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow resize-none" placeholder="Provide product details..." /></div>
                   </div>
                 </div>
