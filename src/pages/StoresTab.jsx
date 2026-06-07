@@ -15,6 +15,7 @@ const StoresTab = () => {
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
                 <th className="p-4 font-bold">Store Name</th>
+                <th className="p-4 font-bold">Type</th>
                 <th className="p-4 font-bold">URL</th>
                 <th className="p-4 font-bold">Owner</th>
                 <th className="p-4 font-bold">Plan</th>
@@ -32,6 +33,7 @@ const StoresTab = () => {
                       <span className="font-semibold text-slate-800">{store.storeName}</span>
                       <span className="block text-xs font-mono text-slate-400">{store.storeId}</span>
                     </td>
+                    <td className="p-4 text-sm text-slate-600 capitalize font-medium">{store.storeType || 'N/A'}</td>
                     <td className="p-4"><a href={`https://${url}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline flex items-center gap-1 text-sm">{url} <ExternalLink size={14} /></a></td>
                     <td className="p-4 text-sm text-slate-600">{owner?.name || 'N/A'}</td>
                     <td className="p-4">
@@ -45,7 +47,7 @@ const StoresTab = () => {
                   </tr>
                 )
               })}
-              {stores.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-500 font-medium">No stores created yet.</td></tr>}
+              {stores.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-slate-500 font-medium">No stores created yet.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -56,7 +58,10 @@ const StoresTab = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
-                <h3 className="text-xl font-bold text-slate-800">{selectedStore.storeName}</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-bold text-slate-800">{selectedStore.storeName}</h3>
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold uppercase rounded-full tracking-wider">{selectedStore.storeType || 'N/A'}</span>
+                </div>
                 <p className="text-xs text-slate-500 font-mono mt-1">{selectedStore.storeId}</p>
               </div>
               <button onClick={() => setSelectedStore(null)} className="text-slate-400 hover:text-red-500 transition-colors text-3xl leading-none">&times;</button>
