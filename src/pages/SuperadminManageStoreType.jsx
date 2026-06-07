@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../../GB-FRONTEND/src/components/AdminLayout';
 import { Edit2, Trash2, Plus, X } from 'lucide-react';
 
 const SuperadminManageStoreType = ({ token, onLogout }) => {
