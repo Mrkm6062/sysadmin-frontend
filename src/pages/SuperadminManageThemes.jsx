@@ -12,6 +12,7 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
   });
 
   const [themes, setThemes] = useState([]);
+  const [storeTypes, setStoreTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -24,7 +25,7 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
     name: '',
     themeId: '',
     type: 'free',
-    category: ['general'],
+    category: [],
     description: '',
     previewImage: '',
     themeFolder: '',
@@ -38,12 +39,25 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
   const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
   const API_BASE_URL = envUrl;
 
-  const categoryOptions = ["restaurant", "nasta", "vegetable", "ecommerce", "clothing", "kirana", "general"];
-
   // Fetch Themes on Load
   useEffect(() => {
     fetchThemes();
+    fetchStoreTypes();
   }, []);
+
+  const fetchStoreTypes = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/store-types`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStoreTypes(data);
+      }
+    } catch (e) {
+      console.error('Failed to load store types.', e);
+    }
+  };
 
   const fetchThemes = async () => {
     setLoading(true);
@@ -352,13 +366,15 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-3">Target Categories</label>
                 <div className="flex flex-wrap gap-3">
-                  {categoryOptions.map(cat => (
-                    <label key={cat} className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 cursor-pointer transition-colors ${formData.category.includes(cat) ? 'border-[#76b900] bg-green-50 text-green-800' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
-                      <input type="checkbox" checked={formData.category.includes(cat)} onChange={() => handleCategoryChange(cat)} className="hidden" />
-                      <span className="text-sm font-bold capitalize">{cat}</span>
-                      {formData.category.includes(cat) && <Check size={14} className="text-[#76b900]" />}
+                  {storeTypes.length > 0 ? storeTypes.map(st => (
+                    <label key={st._id} className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 cursor-pointer transition-colors ${formData.category.includes(st.name) ? 'border-[#76b900] bg-green-50 text-green-800' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}>
+                      <input type="checkbox" checked={formData.category.includes(st.name)} onChange={() => handleCategoryChange(st.name)} className="hidden" />
+                      <span className="text-sm font-bold capitalize">{st.name}</span>
+                      {formData.category.includes(st.name) && <Check size={14} className="text-[#76b900]" />}
                     </label>
-                  ))}
+                  )) : (
+                    <span className="text-sm text-slate-500 italic">No store types configured yet.</span>
+                  )}
                 </div>
               </div>
 
