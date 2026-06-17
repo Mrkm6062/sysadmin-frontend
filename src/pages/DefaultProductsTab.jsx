@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, DownloadCloud, UploadCloud } from 'lucide-react';
 
 const DefaultProductsTab = () => {
   const [defaultProducts, setDefaultProducts] = useState([]);
@@ -12,6 +13,14 @@ const DefaultProductsTab = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [storeTypesList, setStoreTypesList] = useState([]);
+  const [filterStoreType, setFilterStoreType] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [uniqueCategories, setUniqueCategories] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchStoreTypes = async () => {
@@ -51,6 +60,17 @@ const DefaultProductsTab = () => {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    if (defaultProducts.length > 0) {
+      const categories = [...new Set(defaultProducts.map(p => p.category).filter(Boolean))];
+      setUniqueCategories(categories.sort());
+    }
+  }, [defaultProducts]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStoreType, filterCategory]);
+
   const handleAddVariant = () => setDefaultProductForm({ ...defaultProductForm, variants: [...defaultProductForm.variants, { name: '', price: '', stock: '', sku: '' }] });
   const handleUpdateVariant = (index, field, value) => {
     const newVariants = [...defaultProductForm.variants];
@@ -89,6 +109,7 @@ const DefaultProductsTab = () => {
   const handleSaveDefaultProduct = async (e) => {
     e.preventDefault();
     setError('');
+    setIsSaving(true);
     try {
       const token = localStorage.getItem('superadmin_token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
@@ -111,7 +132,9 @@ const DefaultProductsTab = () => {
         const data = await response.json();
         setError(data.message || 'Failed to save default product');
       }
-    } catch (err) { setError('Network error while saving default product'); }
+    } catch (err) { setError('Network error while saving default product'); } finally {
+      setIsSaving(false);
+    }
   };
 
   const editDefaultProduct = (product) => {
@@ -132,15 +155,157 @@ const DefaultProductsTab = () => {
     } catch (err) { setError('Network error while deleting default product'); }
   };
 
+  // --- CSV Export & Import ---
+  const handleExportCSV = () => {
+    let csvContent = "ID,Name,Category,StoreTypes,BasePrice,TotalStock,UnitType,IsActive,Description\n";
+    filteredProducts.forEach(p => {
+      const storeTypesStr = (p.storeTypes || []).join(';');
+      csvContent += `"${p._id}","${p.name.replace(/"/g, '""')}","${(p.category || '').replace(/"/g, '""')}","${storeTypesStr}","${p.basePrice}","${p.totalStock}","${p.unitType}","${p.isActive}","${(p.description || '').replace(/"/g, '""')}"\n`;
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `default_products_export.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setError('');
+
+    const parseCSVRow = (str) => {
+      const result = [];
+      let cur = '';
+      let inQuote = false;
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] === '"') inQuote = !inQuote;
+        else if (str[i] === ',' && !inQuote) { result.push(cur.trim()); cur = ''; }
+        else cur += str[i];
+      }
+      result.push(cur.trim());
+      return result.map(s => s.replace(/^"|"$/g, '').replace(/""/g, '"'));
+    };
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const rows = text.split('\n').filter(line => line.trim()).map(parseCSVRow);
+      const dataRows = rows.slice(1).filter(r => r.length >= 8); // Require minimum columns
+
+      const token = localStorage.getItem('superadmin_token');
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Batch requests to prevent rate limiting or browser crash
+      const batchSize = 10;
+      for (let i = 0; i < dataRows.length; i += batchSize) {
+        const batch = dataRows.slice(i, i + batchSize);
+        const promises = batch.map(async (row) => {
+          const [idRaw, name, category, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
+          const id = idRaw ? idRaw.trim() : "";
+          const isUpdate = id && id.length === 24; // If valid Mongo ObjectId, it's an update
+          
+          const payload = {
+            name, category, unitType: unitType || 'piece', description: description || '',
+            storeTypes: storeTypesRaw ? storeTypesRaw.split(';').map(s => s.trim()).filter(Boolean) : [],
+            basePrice: Number(basePrice) || 0,
+            totalStock: Number(totalStock) || 0,
+            isActive: String(isActive).toLowerCase() !== 'false', // Default to true unless explicitly false
+          };
+
+          if (!isUpdate) { payload.images = []; payload.variants = []; } // Prevent wiping images on update
+
+          const url = isUpdate ? `${envUrl}/api/superadmin/default-products/${id}` : `${envUrl}/api/superadmin/default-products`;
+          try {
+            const response = await fetch(url, { method: isUpdate ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
+            if (response.ok) successCount++; else failCount++;
+          } catch (e) { failCount++; }
+        });
+        await Promise.all(promises);
+      }
+
+      alert(`Import Complete! Successfully processed ${successCount} products. Failed: ${failCount}.`);
+      e.target.value = null;
+      
+      // Refresh List
+      try {
+        const response = await fetch(`${envUrl}/api/superadmin/default-products`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.ok) { const dpData = await response.json(); setDefaultProducts(dpData.data || []); }
+      } catch(err) {}
+      setIsImporting(false);
+    };
+    reader.readAsText(file);
+  };
+
   if (loading) return <div className="p-8 text-center text-slate-500 font-bold">Loading Default Products...</div>;
+  if (isImporting) return <div className="p-20 text-center text-blue-500 font-bold animate-pulse text-xl">Importing CSV, please wait... This may take a moment for thousands of products.</div>;
+
+  const filteredProducts = defaultProducts.filter(product => {
+    const storeTypeMatch = filterStoreType === 'all' || (product.storeTypes && product.storeTypes.includes(filterStoreType));
+    const categoryMatch = filterCategory === 'all' || product.category === filterCategory;
+    const searchMatch = !searchQuery || product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return storeTypeMatch && categoryMatch && searchMatch;
+  });
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
         <h2 className="text-xl font-bold text-slate-800">Default Product Catalog</h2>
-        <button onClick={() => { setDefaultProductForm({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: storeTypesList.length > 0 ? storeTypesList[0].name : '', category: '', isActive: true, images: [], variants: [] }); setEditingDefaultProductId(null); setIsDefaultProductFormOpen(!isDefaultProductFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
-          {isDefaultProductFormOpen ? 'Cancel' : '+ Add Default Product'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={handleExportCSV} className="px-4 py-2 bg-white text-blue-600 border border-blue-200 font-bold rounded-lg hover:bg-blue-50 transition flex items-center gap-2 text-sm">
+            <DownloadCloud size={18} /> Export CSV
+          </button>
+          <label className="px-4 py-2 bg-white text-indigo-600 border border-indigo-200 font-bold rounded-lg hover:bg-indigo-50 transition flex items-center gap-2 text-sm cursor-pointer">
+            <UploadCloud size={18} /> Import CSV
+            <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} disabled={isImporting} />
+          </label>
+          <button onClick={() => { setDefaultProductForm({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: storeTypesList.length > 0 ? storeTypesList[0].name : '', category: '', isActive: true, images: [], variants: [] }); setEditingDefaultProductId(null); setIsDefaultProductFormOpen(!isDefaultProductFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm">
+            {isDefaultProductFormOpen ? 'Cancel' : '+ Add Default Product'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Search by Name</label>
+          <input 
+            type="text" 
+            value={searchQuery} 
+            onChange={e => setSearchQuery(e.target.value)} 
+            placeholder="Search products..." 
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Filter by Store Type</label>
+          <select value={filterStoreType} onChange={e => setFilterStoreType(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+            <option value="all">All Store Types</option>
+            {storeTypesList.map(st => <option key={st._id} value={st.name}>{st.name}</option>)}
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Filter by Category</label>
+          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+            <option value="all">All Categories</option>
+            {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+        </div>
+        <div className="flex-shrink-0 md:self-end">
+            <p className="text-sm font-bold text-slate-600 text-center md:text-right h-full flex items-center justify-center bg-white px-4 py-2 rounded-lg border border-slate-300">
+                Showing {filteredProducts.length} / {defaultProducts.length} products
+            </p>
+        </div>
       </div>
 
       {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">{error}</div>}
@@ -198,7 +363,7 @@ const DefaultProductsTab = () => {
                 <div className="flex items-center gap-4 border-t border-slate-100 pt-4"><label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={defaultProductForm.isActive} onChange={e => setDefaultProductForm({...defaultProductForm, isActive: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Active (Visible to Stores)</label></div>
               </form>
             </div>
-            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-4 rounded-b-3xl sticky bottom-0"><button type="button" onClick={() => { setIsDefaultProductFormOpen(false); setEditingDefaultProductId(null); }} className="px-6 py-2.5 font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</button><button type="submit" form="defaultProductForm" className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100 disabled:opacity-50">{editingDefaultProductId ? 'Update Default Product' : 'Save Default Product'}</button></div>
+            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-4 rounded-b-3xl sticky bottom-0"><button type="button" onClick={() => { setIsDefaultProductFormOpen(false); setEditingDefaultProductId(null); }} className="px-6 py-2.5 font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</button><button type="submit" form="defaultProductForm" disabled={isSaving} className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100 disabled:opacity-50">{isSaving ? 'Saving...' : (editingDefaultProductId ? 'Update Default Product' : 'Save Default Product')}</button></div>
           </div>
         </div>
       )}
@@ -206,15 +371,44 @@ const DefaultProductsTab = () => {
         <table className="w-full text-left border-collapse">
           <thead><tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200"><th className="p-4 font-bold">Product Name</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Store Types</th><th className="p-4 font-bold text-right">Price</th><th className="p-4 font-bold text-center">Status</th><th className="p-4 font-bold text-right">Actions</th></tr></thead>
           <tbody>
-            {defaultProducts.map(product => (
+            {paginatedProducts.map(product => (
               <tr key={product._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                 <td className="p-4 font-semibold text-slate-800">{product.name}</td><td className="p-4 text-sm text-slate-600">{product.category || '-'}</td><td className="p-4 text-sm text-slate-600">{(product.storeTypes || []).join(', ')}</td><td className="p-4 text-right font-bold text-slate-800">₹{product.basePrice}/{product.unitType}</td><td className="p-4 text-center"><span className={`px-2 py-1 rounded-md text-xs font-bold ${product.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{product.isActive ? 'Active' : 'Inactive'}</span></td>
                 <td className="p-4 text-right"><div className="flex justify-end gap-2"><button onClick={() => editDefaultProduct(product)} className="text-blue-500 hover:text-blue-700 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg transition">Edit</button><button onClick={() => handleDeleteDefaultProduct(product._id)} className="text-red-500 hover:text-red-700 text-sm font-bold bg-red-50 px-3 py-1.5 rounded-lg transition">Delete</button></div></td>
               </tr>
             ))}
-            {defaultProducts.length === 0 && !isDefaultProductFormOpen && <tr><td colSpan="6" className="p-8 text-center text-slate-500 font-medium border-2 border-dashed border-slate-200 rounded-xl">No default products created yet.</td></tr>}
+            {filteredProducts.length === 0 && !loading && <tr><td colSpan="6" className="p-8 text-center text-slate-500 font-medium border-2 border-dashed border-slate-200 rounded-xl">No default products match your filters.</td></tr>}
           </tbody>
         </table>
+
+        {/* Pagination Controls */}
+        {filteredProducts.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50 gap-4 mt-4 rounded-xl">
+            <div className="text-sm text-slate-500 flex items-center gap-2">
+              Showing <span className="font-bold text-slate-800">{startIndex + 1}</span> to <span className="font-bold text-slate-800">{Math.min(startIndex + itemsPerPage, filteredProducts.length)}</span> of <span className="font-bold text-slate-800">{filteredProducts.length}</span> products
+              <select 
+                value={itemsPerPage} 
+                onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} 
+                className="ml-2 bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+                <ChevronLeft size={18} />
+              </button>
+              <div className="text-sm font-medium text-slate-600 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">
+                {currentPage} / {totalPages || 1}
+              </div>
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
