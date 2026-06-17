@@ -46,7 +46,7 @@ const DefaultProductsTab = () => {
       try {
         const token = localStorage.getItem('superadmin_token');
         const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
-        const response = await fetch(`${envUrl}/api/superadmin/default-products`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetch(`${envUrl}/api/superadmin/default-products?limit=10000`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
           const dpData = await response.json();
           setDefaultProducts(dpData.data || []);
@@ -236,7 +236,7 @@ const DefaultProductsTab = () => {
       
       // Refresh List
       try {
-        const response = await fetch(`${envUrl}/api/superadmin/default-products`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetch(`${envUrl}/api/superadmin/default-products?limit=10000`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) { const dpData = await response.json(); setDefaultProducts(dpData.data || []); }
       } catch(err) {}
       setIsImporting(false);
