@@ -202,36 +202,83 @@ const DefaultProductsTab = () => {
 
       let successCount = 0;
       let failCount = 0;
+      const errors = [];
 
-      // Batch requests to prevent rate limiting or browser crash
+      // Process NEW products (blank ID) ONE AT A TIME to avoid slug race conditions.
+      // Process UPDATE products (has ID) in parallel batches since those already have slugs.
+      const newProducts = dataRows.filter(row => {
+        const idRaw = row[0];
+        return !idRaw || !idRaw.trim() || idRaw.trim().length !== 24;
+      });
+      const updateProducts = dataRows.filter(row => {
+        const idRaw = row[0];
+        return idRaw && idRaw.trim() && idRaw.trim().length === 24;
+      });
+
+      // Process new products sequentially
+      for (const row of newProducts) {
+        const [idRaw, name, category, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
+        if (!name || !name.trim()) { failCount++; errors.push(`Skipped row with empty name`); continue; }
+        
+        const payload = {
+          name: name.trim(), category: category ? category.trim() : '', unitType: (unitType || 'piece').trim(), description: (description || '').trim(),
+          storeTypes: storeTypesRaw ? storeTypesRaw.split(';').map(s => s.trim()).filter(Boolean) : [],
+          basePrice: Number(basePrice) || 0,
+          totalStock: Number(totalStock) || 0,
+          isActive: String(isActive).toLowerCase() !== 'false',
+          images: [], variants: []
+        };
+        try {
+          const response = await fetch(`${envUrl}/api/superadmin/default-products`, { 
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) 
+          });
+          if (response.ok) { successCount++; }
+          else { 
+            const errData = await response.json().catch(() => ({})); 
+            failCount++; 
+            errors.push(`"${payload.name}": ${errData.message || `HTTP ${response.status}`}`); 
+          }
+        } catch (e) { failCount++; errors.push(`"${(payload.name || 'unknown')}": Network error - ${e.message}`); }
+      }
+
+      // Process updates in parallel batches
       const batchSize = 10;
-      for (let i = 0; i < dataRows.length; i += batchSize) {
-        const batch = dataRows.slice(i, i + batchSize);
+      for (let i = 0; i < updateProducts.length; i += batchSize) {
+        const batch = updateProducts.slice(i, i + batchSize);
         const promises = batch.map(async (row) => {
           const [idRaw, name, category, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
-          const id = idRaw ? idRaw.trim() : "";
-          const isUpdate = id && id.length === 24; // If valid Mongo ObjectId, it's an update
-          
+          const id = idRaw.trim();
           const payload = {
-            name, category, unitType: unitType || 'piece', description: description || '',
+            name: name.trim(), category: category ? category.trim() : '', unitType: (unitType || 'piece').trim(), description: (description || '').trim(),
             storeTypes: storeTypesRaw ? storeTypesRaw.split(';').map(s => s.trim()).filter(Boolean) : [],
             basePrice: Number(basePrice) || 0,
             totalStock: Number(totalStock) || 0,
-            isActive: String(isActive).toLowerCase() !== 'false', // Default to true unless explicitly false
+            isActive: String(isActive).toLowerCase() !== 'false',
           };
-
-          if (!isUpdate) { payload.images = []; payload.variants = []; } // Prevent wiping images on update
-
-          const url = isUpdate ? `${envUrl}/api/superadmin/default-products/${id}` : `${envUrl}/api/superadmin/default-products`;
           try {
-            const response = await fetch(url, { method: isUpdate ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
-            if (response.ok) successCount++; else failCount++;
-          } catch (e) { failCount++; }
+            const response = await fetch(`${envUrl}/api/superadmin/default-products/${id}`, { 
+              method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) 
+            });
+            if (response.ok) { successCount++; }
+            else { 
+              const errData = await response.json().catch(() => ({})); 
+              failCount++; 
+              errors.push(`Update "${payload.name}": ${errData.message || `HTTP ${response.status}`}`); 
+            }
+          } catch (e) { failCount++; errors.push(`Update "${(payload.name || id)}": Network error - ${e.message}`); }
         });
         await Promise.all(promises);
       }
 
-      alert(`Import Complete! Successfully processed ${successCount} products. Failed: ${failCount}.`);
+      // Show detailed errors if any
+      if (errors.length > 0) {
+        const errorSummary = errors.slice(0, 20).join('\n• ');
+        const moreMsg = errors.length > 20 ? `\n...and ${errors.length - 20} more errors` : '';
+        alert(`Import Complete!\n✅ Success: ${successCount}\n❌ Failed: ${failCount}\n\nErrors:\n• ${errorSummary}${moreMsg}`);
+      } else {
+        alert(`Import Complete!\n✅ Successfully processed ${successCount} products.`);
+      }
+
       e.target.value = null;
       
       // Refresh List
