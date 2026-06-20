@@ -5,7 +5,7 @@ const DefaultProductsTab = () => {
   const [defaultProducts, setDefaultProducts] = useState([]);
   const [isDefaultProductFormOpen, setIsDefaultProductFormOpen] = useState(false);
   const [editingDefaultProductId, setEditingDefaultProductId] = useState(null);
-  const [defaultProductForm, setDefaultProductForm] = useState({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: '', category: '', isActive: true, images: [], variants: [] });
+  const [defaultProductForm, setDefaultProductForm] = useState({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: '', category: '', foodtype: '', isActive: true, images: [], variants: [] });
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [mediaImages, setMediaImages] = useState([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -138,7 +138,7 @@ const DefaultProductsTab = () => {
   };
 
   const editDefaultProduct = (product) => {
-    setDefaultProductForm({ name: product.name || '', description: product.description || '', basePrice: product.basePrice || '', totalStock: product.totalStock !== undefined ? product.totalStock : (product.stock || ''), unitType: product.unitType || 'piece', storeTypes: (product.storeTypes && product.storeTypes.length > 0) ? product.storeTypes[0] : (storeTypesList.length > 0 ? storeTypesList[0].name : ''), category: product.category || '', isActive: product.isActive !== false, images: product.images || [], variants: product.variants || [] });
+    setDefaultProductForm({ name: product.name || '', description: product.description || '', basePrice: product.basePrice || '', totalStock: product.totalStock !== undefined ? product.totalStock : (product.stock || ''), unitType: product.unitType || 'piece', storeTypes: (product.storeTypes && product.storeTypes.length > 0) ? product.storeTypes[0] : (storeTypesList.length > 0 ? storeTypesList[0].name : ''), category: product.category || '', foodtype: product.foodtype || '', isActive: product.isActive !== false, images: product.images || [], variants: product.variants || [] });
     setEditingDefaultProductId(product._id);
     setIsDefaultProductFormOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -157,10 +157,10 @@ const DefaultProductsTab = () => {
 
   // --- CSV Export & Import ---
   const handleExportCSV = () => {
-    let csvContent = "ID,Name,Category,StoreTypes,BasePrice,TotalStock,UnitType,IsActive,Description\n";
+    let csvContent = "ID,Name,Category,FoodType,StoreTypes,BasePrice,TotalStock,UnitType,IsActive,Description\n";
     filteredProducts.forEach(p => {
       const storeTypesStr = (p.storeTypes || []).join(';');
-      csvContent += `"${p._id}","${p.name.replace(/"/g, '""')}","${(p.category || '').replace(/"/g, '""')}","${storeTypesStr}","${p.basePrice}","${p.totalStock}","${p.unitType}","${p.isActive}","${(p.description || '').replace(/"/g, '""')}"\n`;
+      csvContent += `"${p._id}","${p.name.replace(/"/g, '""')}","${(p.category || '').replace(/"/g, '""')}","${(p.foodtype || '').replace(/"/g, '""')}","${storeTypesStr}","${p.basePrice}","${p.totalStock}","${p.unitType}","${p.isActive}","${(p.description || '').replace(/"/g, '""')}"\n`;
     });
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -195,7 +195,7 @@ const DefaultProductsTab = () => {
     reader.onload = async (event) => {
       const text = event.target.result;
       const rows = text.split('\n').filter(line => line.trim()).map(parseCSVRow);
-      const dataRows = rows.slice(1).filter(r => r.length >= 8); // Require minimum columns
+      const dataRows = rows.slice(1).filter(r => r.length >= 9); // Require minimum columns
 
       const token = localStorage.getItem('superadmin_token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
@@ -217,11 +217,11 @@ const DefaultProductsTab = () => {
 
       // Process new products sequentially
       for (const row of newProducts) {
-        const [idRaw, name, category, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
+        const [idRaw, name, category, foodtype, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
         if (!name || !name.trim()) { failCount++; errors.push(`Skipped row with empty name`); continue; }
         
         const payload = {
-          name: name.trim(), category: category ? category.trim() : '', unitType: (unitType || 'piece').trim(), description: (description || '').trim(),
+          name: name.trim(), category: category ? category.trim() : '', foodtype: foodtype ? foodtype.trim() : '', unitType: (unitType || 'piece').trim(), description: (description || '').trim(),
           storeTypes: storeTypesRaw ? storeTypesRaw.split(';').map(s => s.trim()).filter(Boolean) : [],
           basePrice: Number(basePrice) || 0,
           totalStock: Number(totalStock) || 0,
@@ -246,10 +246,10 @@ const DefaultProductsTab = () => {
       for (let i = 0; i < updateProducts.length; i += batchSize) {
         const batch = updateProducts.slice(i, i + batchSize);
         const promises = batch.map(async (row) => {
-          const [idRaw, name, category, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
+          const [idRaw, name, category, foodtype, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
           const id = idRaw.trim();
           const payload = {
-            name: name.trim(), category: category ? category.trim() : '', unitType: (unitType || 'piece').trim(), description: (description || '').trim(),
+            name: name.trim(), category: category ? category.trim() : '', foodtype: foodtype ? foodtype.trim() : '', unitType: (unitType || 'piece').trim(), description: (description || '').trim(),
             storeTypes: storeTypesRaw ? storeTypesRaw.split(';').map(s => s.trim()).filter(Boolean) : [],
             basePrice: Number(basePrice) || 0,
             totalStock: Number(totalStock) || 0,
@@ -317,7 +317,7 @@ const DefaultProductsTab = () => {
             <UploadCloud size={18} /> Import CSV
             <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} disabled={isImporting} />
           </label>
-          <button onClick={() => { setDefaultProductForm({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: storeTypesList.length > 0 ? storeTypesList[0].name : '', category: '', isActive: true, images: [], variants: [] }); setEditingDefaultProductId(null); setIsDefaultProductFormOpen(!isDefaultProductFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm">
+          <button onClick={() => { setDefaultProductForm({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: storeTypesList.length > 0 ? storeTypesList[0].name : '', category: '', foodtype: '', isActive: true, images: [], variants: [] }); setEditingDefaultProductId(null); setIsDefaultProductFormOpen(!isDefaultProductFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm">
             {isDefaultProductFormOpen ? 'Cancel' : '+ Add Default Product'}
           </button>
         </div>
@@ -368,6 +368,7 @@ const DefaultProductsTab = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div><label className="block text-sm font-semibold mb-1 text-slate-700">Product Name <span className="text-red-500">*</span></label><input required value={defaultProductForm.name} onChange={e=>setDefaultProductForm({...defaultProductForm, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow" placeholder="e.g. Fresh Tomatoes" /></div>
                     <div><label className="block text-sm font-semibold mb-1 text-slate-700">Category</label><input type="text" value={defaultProductForm.category} onChange={e=>setDefaultProductForm({...defaultProductForm, category: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow bg-white" placeholder="e.g. Groceries" /></div>
+                    <div><label className="block text-sm font-semibold mb-1 text-slate-700">Food Type</label><input type="text" value={defaultProductForm.foodtype} onChange={e=>setDefaultProductForm({...defaultProductForm, foodtype: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow bg-white" placeholder="e.g. Veg, Non-Veg, Vegan" /></div>
                     <div><label className="block text-sm font-semibold mb-1 text-slate-700">Store Type <span className="text-red-500">*</span></label>
                       <select required value={defaultProductForm.storeTypes} onChange={e => setDefaultProductForm({...defaultProductForm, storeTypes: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-shadow bg-white">
                         {storeTypesList.length > 0 ? storeTypesList.map(st => <option key={st._id} value={st.name}>{st.name}</option>) : <option value="kirana">Kirana (Default)</option>}
@@ -416,15 +417,15 @@ const DefaultProductsTab = () => {
       )}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
-          <thead><tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200"><th className="p-4 font-bold">Product Name</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Store Types</th><th className="p-4 font-bold text-right">Price</th><th className="p-4 font-bold text-center">Status</th><th className="p-4 font-bold text-right">Actions</th></tr></thead>
+          <thead><tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200"><th className="p-4 font-bold">Product Name</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Food Type</th><th className="p-4 font-bold">Store Types</th><th className="p-4 font-bold text-right">Price</th><th className="p-4 font-bold text-center">Status</th><th className="p-4 font-bold text-right">Actions</th></tr></thead>
           <tbody>
             {paginatedProducts.map(product => (
               <tr key={product._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                <td className="p-4 font-semibold text-slate-800">{product.name}</td><td className="p-4 text-sm text-slate-600">{product.category || '-'}</td><td className="p-4 text-sm text-slate-600">{(product.storeTypes || []).join(', ')}</td><td className="p-4 text-right font-bold text-slate-800">₹{product.basePrice}/{product.unitType}</td><td className="p-4 text-center"><span className={`px-2 py-1 rounded-md text-xs font-bold ${product.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{product.isActive ? 'Active' : 'Inactive'}</span></td>
+                <td className="p-4 font-semibold text-slate-800">{product.name}</td><td className="p-4 text-sm text-slate-600">{product.category || '-'}</td><td className="p-4 text-sm text-slate-600">{product.foodtype || '-'}</td><td className="p-4 text-sm text-slate-600">{(product.storeTypes || []).join(', ')}</td><td className="p-4 text-right font-bold text-slate-800">₹{product.basePrice}/{product.unitType}</td><td className="p-4 text-center"><span className={`px-2 py-1 rounded-md text-xs font-bold ${product.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{product.isActive ? 'Active' : 'Inactive'}</span></td>
                 <td className="p-4 text-right"><div className="flex justify-end gap-2"><button onClick={() => editDefaultProduct(product)} className="text-blue-500 hover:text-blue-700 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg transition">Edit</button><button onClick={() => handleDeleteDefaultProduct(product._id)} className="text-red-500 hover:text-red-700 text-sm font-bold bg-red-50 px-3 py-1.5 rounded-lg transition">Delete</button></div></td>
               </tr>
             ))}
-            {filteredProducts.length === 0 && !loading && <tr><td colSpan="6" className="p-8 text-center text-slate-500 font-medium border-2 border-dashed border-slate-200 rounded-xl">No default products match your filters.</td></tr>}
+            {filteredProducts.length === 0 && !loading && <tr><td colSpan="7" className="p-8 text-center text-slate-500 font-medium border-2 border-dashed border-slate-200 rounded-xl">No default products match your filters.</td></tr>}
           </tbody>
         </table>
 
