@@ -417,15 +417,22 @@ const DefaultProductsTab = () => {
       )}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
-          <thead><tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200"><th className="p-4 font-bold">Product Name</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Food Type</th><th className="p-4 font-bold">Store Types</th><th className="p-4 font-bold text-right">Price</th><th className="p-4 font-bold text-center">Status</th><th className="p-4 font-bold text-right">Actions</th></tr></thead>
+          <thead><tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200"><th className="p-4 font-bold">Image</th><th className="p-4 font-bold">Product Name</th><th className="p-4 font-bold">Category</th><th className="p-4 font-bold">Food Type</th><th className="p-4 font-bold">Store Types</th><th className="p-4 font-bold text-right">Price</th><th className="p-4 font-bold text-center">Status</th><th className="p-4 font-bold text-right">Actions</th></tr></thead>
           <tbody>
             {paginatedProducts.map(product => (
               <tr key={product._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <td className="p-4">
+                  {product.images && product.images[0] ? (
+                    <img src={product.images[0]} alt={product.name} className="w-12 h-12 object-cover rounded-lg border border-slate-200" />
+                  ) : (
+                    <span className="text-slate-400 text-xs italic">No Image</span>
+                  )}
+                </td>
                 <td className="p-4 font-semibold text-slate-800">{product.name}</td><td className="p-4 text-sm text-slate-600">{product.category || '-'}</td><td className="p-4 text-sm text-slate-600">{product.foodtype || '-'}</td><td className="p-4 text-sm text-slate-600">{(product.storeTypes || []).join(', ')}</td><td className="p-4 text-right font-bold text-slate-800">₹{product.basePrice}/{product.unitType}</td><td className="p-4 text-center"><span className={`px-2 py-1 rounded-md text-xs font-bold ${product.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>{product.isActive ? 'Active' : 'Inactive'}</span></td>
                 <td className="p-4 text-right"><div className="flex justify-end gap-2"><button onClick={() => editDefaultProduct(product)} className="text-blue-500 hover:text-blue-700 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg transition">Edit</button><button onClick={() => handleDeleteDefaultProduct(product._id)} className="text-red-500 hover:text-red-700 text-sm font-bold bg-red-50 px-3 py-1.5 rounded-lg transition">Delete</button></div></td>
               </tr>
             ))}
-            {filteredProducts.length === 0 && !loading && <tr><td colSpan="7" className="p-8 text-center text-slate-500 font-medium border-2 border-dashed border-slate-200 rounded-xl">No default products match your filters.</td></tr>}
+            {filteredProducts.length === 0 && !loading && <tr><td colSpan="8" className="p-8 text-center text-slate-500 font-medium border-2 border-dashed border-slate-200 rounded-xl">No default products match your filters.</td></tr>}
           </tbody>
         </table>
 
