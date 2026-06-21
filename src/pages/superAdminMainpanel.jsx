@@ -10,6 +10,7 @@ const SuperAdminMainpanel = () => {
   const [error, setError] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [myPerformanceStores, setMyPerformanceStores] = useState([]);
 
   // Platform Settings States
   const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [] });
@@ -70,7 +71,21 @@ const SuperAdminMainpanel = () => {
         const meData = await meRes.json();
         setCurrentUser(meData);
 
-        // 2. Fetch general platform admin data
+        // 2. Fetch employee performance stores if user is staff
+        if (meData.isStaff) {
+          try {
+            const perfRes = await fetch(`${envUrl}/api/staff-performance/my-stores`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (perfRes.ok) {
+              setMyPerformanceStores(await perfRes.json());
+            }
+          } catch (perfErr) {
+            console.error("Failed to load staff performance stores", perfErr);
+          }
+        }
+
+        // 3. Fetch general platform admin data
         const API_BASE_URL = `${envUrl}/api/superadmin`;
         const response = await fetch(`${API_BASE_URL}/data`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -94,7 +109,10 @@ const SuperAdminMainpanel = () => {
             setPlatformSettings(await responseSettings.json());
           }
         } else {
-          setError('Failed to fetch platform data. Please relogin.');
+          // If staff, response might be 403, which is expected since they don't manage platform users/stores.
+          if (!meData.isStaff) {
+            setError('Failed to fetch platform data. Please relogin.');
+          }
         }
       } catch (err) {
         setError('Network error: ' + err.message);
@@ -194,7 +212,7 @@ const SuperAdminMainpanel = () => {
 
         <main className="w-full flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
           {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">{error}</div>}
-          <Outlet context={{ users, setUsers, stores, plans, setPlans, platformSettings, setPlatformSettings, currentUser, setCurrentUser }} />
+          <Outlet context={{ users, setUsers, stores, plans, setPlans, platformSettings, setPlatformSettings, currentUser, setCurrentUser, myPerformanceStores, setMyPerformanceStores }} />
         </main>
       </div>
     </div>

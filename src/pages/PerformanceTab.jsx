@@ -3,11 +3,11 @@ import { useOutletContext } from 'react-router-dom';
 import { Award, Target, TrendingUp, BarChart2, Star, CheckCircle } from 'lucide-react';
 
 const PerformanceTab = () => {
-  const { currentUser } = useOutletContext();
+  const { currentUser, myPerformanceStores } = useOutletContext();
   const employee = currentUser?.employeeDetails || {};
-  const onboardedCount = employee.onboardedStores?.length || 0;
+  const onboardedCount = myPerformanceStores?.length || 0;
 
-  // Mock performance data based on onboarded count
+  // Performance calculations
   const targetOnboard = 10;
   const targetCompletetionRate = Math.min(Math.round((onboardedCount / targetOnboard) * 100), 100);
 

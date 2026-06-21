@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { IndianRupee, CreditCard, Clock, BadgePercent, CheckCircle, HelpCircle } from 'lucide-react';
 
 const EarningTab = () => {
-  const { currentUser, stores } = useOutletContext();
+  const { currentUser, myPerformanceStores } = useOutletContext();
   const employee = currentUser?.employeeDetails || {};
   const onboardedStores = employee.onboardedStores || [];
 
@@ -12,12 +12,12 @@ const EarningTab = () => {
   const paidEarnings = onboardedStores.filter(item => item.isCommissionPaid).reduce((sum, item) => sum + (item.commissionAmount || 0), 0);
   const pendingEarnings = totalEarnings - paidEarnings;
 
-  // Resolve store details for list
+  // Resolve store details for list using myPerformanceStores
   const listData = onboardedStores.map(onboarded => {
-    const storeObj = stores.find(s => s._id === onboarded.storeId.toString()) || {};
+    const storeObj = myPerformanceStores.find(s => s._id === onboarded.storeId.toString()) || {};
     return {
       ...onboarded,
-      storeName: storeObj.name || 'Store ' + onboarded.storeId,
+      storeName: storeObj.storeName || 'Store ' + onboarded.storeId,
       subdomain: storeObj.subdomain || ''
     };
   });
@@ -123,7 +123,7 @@ const EarningTab = () => {
             </div>
             <h4 className="text-base font-bold text-slate-700">No Commission Records</h4>
             <p className="text-sm text-slate-500 mt-1">
-              You haven't earned any commissions yet. Commisisons are generated when you onboard new stores.
+              You haven't earned any commissions yet. Commissions are generated when you onboard new stores.
             </p>
           </div>
         )}

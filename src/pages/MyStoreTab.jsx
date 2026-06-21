@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Store, Globe, Key, AlertTriangle, ShieldAlert, BadgeCheck } from 'lucide-react';
+import { Store, Globe, AlertTriangle, ShieldAlert, BadgeCheck } from 'lucide-react';
 
 const MyStoreTab = () => {
-  const { currentUser, stores } = useOutletContext();
+  const { currentUser, stores, myPerformanceStores } = useOutletContext();
   const [activeSubTab, setActiveSubTab] = useState('onboarded'); // 'onboarded' | 'assigned'
 
   const employee = currentUser?.employeeDetails || {};
   
-  // Resolve assigned and onboarded store objects from global stores list
-  const assignedStoreIds = employee.assignedStores || [];
-  const onboardedStoreIds = employee.onboardedStores?.map(os => os.storeId.toString()) || [];
+  // Stores I Onboarded - fetched directly from performance endpoint
+  const myOnboardedStores = myPerformanceStores || [];
 
+  // Stores I Manage - resolved from global stores list using assignedStores IDs
+  const assignedStoreIds = employee.assignedStores || [];
   const myAssignedStores = stores.filter(s => assignedStoreIds.includes(s._id));
-  const myOnboardedStores = stores.filter(s => onboardedStoreIds.includes(s._id));
 
   const listToRender = activeSubTab === 'onboarded' ? myOnboardedStores : myAssignedStores;
 
@@ -43,8 +43,9 @@ const MyStoreTab = () => {
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-4">Store Info</th>
                   <th className="px-6 py-4">Domain & Link</th>
-                  <th className="px-6 py-4">Plan</th>
-                  <th className="px-6 py-4">Subscription Status</th>
+                  <th className="px-6 py-4">Plan Name</th>
+                  <th className="px-6 py-4">Active Plan Price</th>
+                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Expiry Date</th>
                 </tr>
               </thead>
@@ -55,6 +56,10 @@ const MyStoreTab = () => {
                     : null;
                   const isExpired = daysLeft !== null && daysLeft <= 0;
 
+                  // Plan information (differs slightly between populated performance store structure and standard store)
+                  const planName = store.plan ? store.plan.name : (typeof store.planId === 'object' && store.planId !== null ? store.planId.name : 'Free');
+                  const planPrice = store.plan ? store.plan.price : (typeof store.planId === 'object' && store.planId !== null ? store.planId.price : 0);
+
                   return (
                     <tr key={store._id} className="hover:bg-slate-50/50 transition">
                       <td className="px-6 py-4">
@@ -63,7 +68,7 @@ const MyStoreTab = () => {
                             <Store size={18} />
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800">{store.name}</p>
+                            <p className="font-bold text-slate-800">{store.storeName || store.name}</p>
                             <p className="text-xs text-slate-400 font-medium">ID: {store.storeId}</p>
                           </div>
                         </div>
@@ -89,7 +94,10 @@ const MyStoreTab = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-800 uppercase text-xs">
-                        {typeof store.planId === 'object' && store.planId !== null ? store.planId.name : 'Free'}
+                        {planName}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-slate-800 text-xs">
+                        ₹{planPrice} / month
                       </td>
                       <td className="px-6 py-4">
                         {store.subscriptionStatus === 'active' ? (
