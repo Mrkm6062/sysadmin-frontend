@@ -13,7 +13,11 @@ const PoliciesTab = () => {
         const token = localStorage.getItem('superadmin_token');
         const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
         const response = await fetch(`${envUrl}/api/superadmin/policies`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) setPolicies(await response.json());
+        if (response.ok) {
+          const data = await response.json();
+          const filtered = data.filter(p => !p.type.toLowerCase().startsWith('salary') && !p.type.toLowerCase().startsWith('commission'));
+          setPolicies(filtered);
+        }
       } catch (err) {
         setError('Failed to load policies');
       } finally {
