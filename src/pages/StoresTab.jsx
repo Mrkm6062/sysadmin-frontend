@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { X, ExternalLink, CheckCircle, Shield, Palette, Calendar, User } from 'lucide-react';
 
+const formatSubdomainUrl = (subdomain) => {
+  if (!subdomain) return '';
+  const clean = subdomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').replace(/(\.galibrand\.cloud)+$/, '');
+  return `${clean}.galibrand.cloud`;
+};
+
 const StoresTab = () => {
   const { stores, plans, users } = useOutletContext();
   const [selectedStore, setSelectedStore] = useState(null);
@@ -26,7 +32,7 @@ const StoresTab = () => {
             <tbody>
               {stores.map(store => {
                 const owner = users.find(u => u.userId === store.ownerId);
-                const url = store.customDomain || store.subdomain;
+                const url = store.customDomain || formatSubdomainUrl(store.subdomain);
                 return (
                   <tr key={store._id} onClick={() => setSelectedStore(store)} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
                     <td className="p-4">
@@ -75,8 +81,8 @@ const StoresTab = () => {
                 </div>
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><ExternalLink size={14} /> Domain & URL</h4>
-                  <a href={`https://${selectedStore.customDomain || selectedStore.subdomain}`} target="_blank" rel="noreferrer" className="font-bold text-blue-600 hover:underline">{selectedStore.customDomain || selectedStore.subdomain}</a>
-                  <p className="text-sm text-slate-600">{selectedStore.customDomain ? 'Custom Domain' : 'Galibrand Subdomain'}</p>
+                  <a href={`https://${selectedStore.customDomain || formatSubdomainUrl(selectedStore.subdomain)}`} target="_blank" rel="noreferrer" className="font-bold text-blue-600 hover:underline">{selectedStore.customDomain || formatSubdomainUrl(selectedStore.subdomain)}</a>
+                  <p className="text-sm text-slate-600">{selectedStore.customDomain ? 'Custom Domain (Connected)' : 'Galibrand Subdomain'}</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Store, Globe, AlertTriangle, ShieldAlert, BadgeCheck } from 'lucide-react';
 
+const formatSubdomainUrl = (subdomain) => {
+  if (!subdomain) return '';
+  // Remove protocols, trailing slash, and duplicate .galibrand.cloud suffixes
+  const clean = subdomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').replace(/(\.galibrand\.cloud)+$/, '');
+  return `${clean}.galibrand.cloud`;
+};
+
 const MyStoreTab = () => {
   const { currentUser, stores, myPerformanceStores } = useOutletContext();
   const [activeSubTab, setActiveSubTab] = useState('onboarded'); // 'onboarded' | 'assigned'
@@ -74,22 +81,32 @@ const MyStoreTab = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="space-y-1">
+                        <div className="flex flex-col gap-1.5">
                           <a 
-                            href={`https://${store.subdomain}.galibrand.cloud`} 
+                            href={`https://${formatSubdomainUrl(store.subdomain)}`} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="text-blue-600 hover:underline font-medium text-xs block"
+                            className="text-blue-600 hover:underline font-bold text-xs"
                           >
-                            {store.subdomain}.galibrand.cloud
+                            {formatSubdomainUrl(store.subdomain)}
                           </a>
-                          {store.customDomain && (
-                            <div className="flex items-center gap-1 text-slate-500 text-xs">
-                              <Globe size={12} className="text-slate-400" />
-                              <a href={`https://${store.customDomain}`} target="_blank" rel="noopener noreferrer" className="hover:underline font-semibold">
+                          {store.customDomain ? (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100 text-xs font-bold w-fit shadow-sm">
+                              <Globe size={12} className="text-emerald-600" />
+                              <span>External: </span>
+                              <a 
+                                href={`https://${store.customDomain}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="hover:underline font-extrabold text-emerald-800"
+                              >
                                 {store.customDomain}
                               </a>
                             </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium italic">
+                              No external domain connected
+                            </span>
                           )}
                         </div>
                       </td>
