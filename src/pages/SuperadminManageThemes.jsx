@@ -117,6 +117,7 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
 
     const uploadData = new FormData();
     uploadData.append('storeId', '000000000000000000000000'); // Store in superadmin global folder
+    uploadData.append('type', 'product');
     uploadData.append('images', file); 
 
     setLoading(true);
