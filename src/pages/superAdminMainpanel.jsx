@@ -11,6 +11,7 @@ const SuperAdminMainpanel = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [myPerformanceStores, setMyPerformanceStores] = useState([]);
+  const [myPerformanceDetails, setMyPerformanceDetails] = useState(null);
 
   // Platform Settings States
   const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [] });
@@ -71,17 +72,19 @@ const SuperAdminMainpanel = () => {
         const meData = await meRes.json();
         setCurrentUser(meData);
 
-        // 2. Fetch employee performance stores if user is staff
+        // 2. Fetch employee performance details if user is staff
         if (meData.isStaff) {
           try {
-            const perfRes = await fetch(`${envUrl}/api/staff-performance/my-stores`, {
+            const perfRes = await fetch(`${envUrl}/api/staff-performance/details`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             if (perfRes.ok) {
-              setMyPerformanceStores(await perfRes.json());
+              const data = await perfRes.json();
+              setMyPerformanceDetails(data);
+              setMyPerformanceStores(data.stores || []);
             }
           } catch (perfErr) {
-            console.error("Failed to load staff performance stores", perfErr);
+            console.error("Failed to load staff performance details", perfErr);
           }
         }
 
@@ -212,7 +215,7 @@ const SuperAdminMainpanel = () => {
 
         <main className="w-full flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
           {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">{error}</div>}
-          <Outlet context={{ users, setUsers, stores, plans, setPlans, platformSettings, setPlatformSettings, currentUser, setCurrentUser, myPerformanceStores, setMyPerformanceStores }} />
+          <Outlet context={{ users, setUsers, stores, plans, setPlans, platformSettings, setPlatformSettings, currentUser, setCurrentUser, myPerformanceStores, setMyPerformanceStores, myPerformanceDetails, setMyPerformanceDetails }} />
         </main>
       </div>
     </div>

@@ -3,12 +3,16 @@ import { useOutletContext } from 'react-router-dom';
 import { Award, Target, TrendingUp, BarChart2, Star, CheckCircle } from 'lucide-react';
 
 const PerformanceTab = () => {
-  const { currentUser, myPerformanceStores } = useOutletContext();
+  const { currentUser, myPerformanceDetails } = useOutletContext();
   const employee = currentUser?.employeeDetails || {};
-  const onboardedCount = myPerformanceStores?.length || 0;
+  
+  const perfSettings = myPerformanceDetails?.performanceSettings || {};
+  const onboardedCount = myPerformanceDetails?.onboardedCount || 0;
+  const targetOnboard = perfSettings.monthlyTarget || 10;
+  const rating = perfSettings.performanceRating || 5.0;
+  const keyPerformanceSettings = perfSettings.keyPerformanceSettings || "Acquire new merchants and onboard them onto the platform.";
+  const commissionPercentage = perfSettings.commissionPercentage || 10;
 
-  // Performance calculations
-  const targetOnboard = 10;
   const targetCompletetionRate = Math.min(Math.round((onboardedCount / targetOnboard) * 100), 100);
 
   return (
@@ -52,7 +56,7 @@ const PerformanceTab = () => {
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Performance Rating</h4>
             <p className="text-2xl font-extrabold text-slate-800 flex items-center gap-1">
-              4.8 <Star size={18} className="fill-amber-400 text-amber-400 shrink-0 inline" />
+              {rating.toFixed(1)} <Star size={18} className="fill-amber-400 text-amber-400 shrink-0 inline" />
             </p>
           </div>
         </div>
@@ -98,12 +102,16 @@ const PerformanceTab = () => {
               <p className="font-semibold text-slate-800">{employee.Department || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Main Goals</p>
-              <ul className="list-disc list-inside text-sm text-slate-600 mt-2 space-y-1.5 font-medium">
-                <li>Acquire new merchants and onboard them onto the platform.</li>
-                <li>Support assigned stores with themes, catalog, and custom domain setup.</li>
-                <li>Monitor store status and assist in plans renewals/upgrades.</li>
-              </ul>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Active Commission Rule</p>
+              <p className="font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg text-sm w-fit mt-1">
+                {commissionPercentage}% One-time Onboarding Commission
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Main Goals & KPIs</p>
+              <div className="text-sm text-slate-600 mt-2 whitespace-pre-line font-medium leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
+                {keyPerformanceSettings}
+              </div>
             </div>
           </div>
         </div>
