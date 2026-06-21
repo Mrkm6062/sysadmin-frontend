@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { IndianRupee, CreditCard, Clock, BadgePercent, CheckCircle, HelpCircle, FileText, Globe } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 const EarningTab = () => {
   const { currentUser, myPerformanceDetails } = useOutletContext();
   const [payouts, setPayouts] = useState([]);
   const [loadingPayouts, setLoadingPayouts] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState('commissions'); // 'commissions' | 'payouts'
+  const [selectedPayoutForModal, setSelectedPayoutForModal] = useState(null);
 
   const employee = currentUser?.employeeDetails || {};
   
@@ -44,6 +46,99 @@ const EarningTab = () => {
   const totalPaidPayouts = payouts.reduce((sum, item) => sum + (item.amount || 0), 0);
   const commissionPayouts = payouts.filter(p => p.type === 'commission').reduce((sum, item) => sum + (item.amount || 0), 0);
   const pendingPayouts = Math.max(totalCommission - commissionPayouts, 0);
+
+  // Vector-based PDF generation using jsPDF
+  const downloadPDF = (payout) => {
+    const doc = new jsPDF();
+    
+    // Brand header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(30, 41, 59); // slate-800
+    doc.text("GALIBRAND CLOUD", 20, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text("Official Salary & Commission Statement", 20, 31);
+    
+    // Line separator
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.line(20, 36, 190, 36);
+    
+    // Statement details
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text("STATEMENT DETAILS", 20, 46);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`Invoice ID: ${payout.invoiceId || 'N/A'}`, 20, 52);
+    doc.text(`Period: ${payout.month || 'N/A'}`, 20, 58);
+    doc.text(`Date of Issue: ${payout.paidAt ? new Date(payout.paidAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN')}`, 20, 64);
+    doc.text(`Status: Paid`, 20, 70);
+
+    // Employee details
+    doc.setFont("helvetica", "bold");
+    doc.text("EMPLOYEE DETAILS", 110, 46);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${payout.employeeName || employee.name || 'N/A'}`, 110, 52);
+    doc.text(`Employee ID: ${payout.employeeId || employee.EmployeeId || 'N/A'}`, 110, 58);
+    doc.text(`Role: ${employee.role || 'Staff'}`, 110, 64);
+    doc.text(`Department: ${employee.Department || 'N/A'}`, 110, 70);
+
+    // Line separator
+    doc.line(20, 76, 190, 76);
+
+    // Table headers
+    doc.setFillColor(248, 250, 252); // slate-50 background
+    doc.rect(20, 84, 170, 8, "F");
+    
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 41, 59); // slate-800
+    doc.text("Description", 24, 89);
+    doc.text("Amount (INR)", 150, 89);
+
+    // Table rows
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(51, 65, 85); // slate-700
+    const description = payout.type === 'salary' 
+      ? `Monthly Base Salary Payout - ${payout.month}`
+      : `Client Store Onboarding Commission - ${payout.month}`;
+    
+    doc.text(description, 24, 100);
+    doc.text(`Rs. ${(payout.amount || 0).toLocaleString('en-IN')}.00`, 150, 100);
+
+    // Table border line
+    doc.setDrawColor(241, 245, 249); // slate-100
+    doc.line(20, 105, 190, 105);
+
+    // Total section
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 41, 59);
+    doc.text("Total Paid Amount", 24, 115);
+    doc.text(`Rs. ${(payout.amount || 0).toLocaleString('en-IN')}.00`, 150, 115);
+
+    // Box highlight for total
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(20, 110, 170, 8);
+
+    // Note/Disclaimer
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184); // slate-400
+    doc.text("This is a system generated payslip/invoice statement and does not require a physical signature.", 20, 135);
+    doc.text("For any disputes or queries, contact the system administration or HR finance department.", 20, 140);
+    
+    // Brand signature
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(59, 130, 246); // blue-500
+    doc.text("Galibrand Cloud Solutions", 20, 150);
+
+    doc.save(`Payslip_${payout.invoiceId || 'Payout'}.pdf`);
+  };
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -195,6 +290,7 @@ const EarningTab = () => {
                     <th className="px-6 py-4">Amount Paid</th>
                     <th className="px-6 py-4">Release Date</th>
                     <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
@@ -221,6 +317,14 @@ const EarningTab = () => {
                         <span className="px-2.5 py-0.5 bg-green-50 text-green-700 text-xs font-bold rounded-full flex items-center gap-1 w-fit">
                           <CheckCircle size={12} /> {item.status || 'Paid'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => setSelectedPayoutForModal(item)}
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 rounded-lg text-xs font-bold transition inline-flex items-center gap-1"
+                        >
+                          <FileText size={12} /> View Payslip
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -253,6 +357,118 @@ const EarningTab = () => {
           </p>
         </div>
       </div>
+
+      {/* Payslip Detail Modal */}
+      {selectedPayoutForModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <FileText className="text-blue-500" /> Payslip Statement
+              </h3>
+              <button 
+                onClick={() => setSelectedPayoutForModal(null)} 
+                className="text-slate-400 hover:text-red-500 transition-colors text-2xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body (Payslip Preview) */}
+            <div className="p-6 overflow-y-auto space-y-6 text-left">
+              {/* Logo / Company Info */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-black text-slate-800 tracking-wide">GALIBRAND <span className="text-blue-600">CLOUD</span></h2>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">SaaS & Infrastructure Enterprise</p>
+                </div>
+                <div className="text-right">
+                  <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-100">
+                    Paid Statement
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 my-4" />
+
+              {/* Invoice & Employee Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Statement Details</h4>
+                  <div className="space-y-1 text-sm text-slate-600">
+                    <p><span className="font-semibold text-slate-800">Invoice ID:</span> {selectedPayoutForModal.invoiceId}</p>
+                    <p><span className="font-semibold text-slate-800">Period:</span> {selectedPayoutForModal.month}</p>
+                    <p>
+                      <span className="font-semibold text-slate-800">Date Paid:</span> {selectedPayoutForModal.paidAt ? new Date(selectedPayoutForModal.paidAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : new Date().toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Employee Details</h4>
+                  <div className="space-y-1 text-sm text-slate-600">
+                    <p><span className="font-semibold text-slate-800">Name:</span> {selectedPayoutForModal.employeeName || employee.name}</p>
+                    <p><span className="font-semibold text-slate-800">ID:</span> {selectedPayoutForModal.employeeId || employee.EmployeeId}</p>
+                    <p><span className="font-semibold text-slate-800">Designation:</span> {employee.Designation || 'Staff Member'}</p>
+                    <p><span className="font-semibold text-slate-800">Department:</span> {employee.Department || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Earnings Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden mt-4">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-3 text-left">Description</th>
+                      <th className="p-3 text-right">Amount (INR)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr>
+                      <td className="p-3 font-medium text-slate-700">
+                        {selectedPayoutForModal.type === 'salary' 
+                          ? `Monthly Base Salary Payout - ${selectedPayoutForModal.month}` 
+                          : `Client Onboarding Commission Payout - ${selectedPayoutForModal.month}`}
+                      </td>
+                      <td className="p-3 text-right font-bold text-slate-800">
+                        ₹{selectedPayoutForModal.amount?.toLocaleString('en-IN')}.00
+                      </td>
+                    </tr>
+                    <tr className="bg-slate-50/50 font-bold border-t border-slate-200">
+                      <td className="p-3 text-slate-800">Total Paid Net</td>
+                      <td className="p-3 text-right text-blue-600 text-base">
+                        ₹{selectedPayoutForModal.amount?.toLocaleString('en-IN')}.00
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs text-slate-500 leading-relaxed font-medium">
+                Note: This is an official digital payout statement issued securely via your employee profile. No physical signature is required. Contact accounting for inquiries.
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setSelectedPayoutForModal(null)} 
+                className="px-4 py-2 border rounded-lg hover:bg-slate-100 font-semibold text-slate-600 transition"
+              >
+                Close
+              </button>
+              <button 
+                onClick={() => downloadPDF(selectedPayoutForModal)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition shadow flex items-center gap-2"
+              >
+                Download Statement PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
