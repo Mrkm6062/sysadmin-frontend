@@ -9,12 +9,12 @@ const SuperAdminMainpanel = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Platform Settings States
   const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [] });
 
-  const menuItems = [
+  const superadminMenuItems = [
     { id: 'overview', name: 'Overview', path: '/dashboard/overview', icon: <LayoutDashboard size={20} /> },
     { id: 'plans', name: 'Subscription Plans', path: '/dashboard/plans', icon: <CreditCard size={20} /> },
     { id: 'users', name: 'Platform Users', path: '/dashboard/users', icon: <Users size={20} /> },
@@ -28,23 +28,49 @@ const SuperAdminMainpanel = () => {
     { id: 'socials', name: 'Global Social Links', path: '/dashboard/socials', icon: <LinkIcon size={20} /> },
     { id: 'settings', name: 'Dashboard Settings', path: '/dashboard/settings', icon: <Settings size={20} /> },
   ];
+
+  const employeeMenuItems = [
+    { id: 'profile', name: 'My Profile', path: '/dashboard/profile', icon: <Users size={20} /> },
+    { id: 'performance', name: 'Performance', path: '/dashboard/performance', icon: <LayoutDashboard size={20} /> },
+    { id: 'my-store', name: 'My Stores', path: '/dashboard/my-store', icon: <Store size={20} /> },
+    { id: 'earning', name: 'My Earnings', path: '/dashboard/earning', icon: <CreditCard size={20} /> },
+  ];
+
+  const menuItems = currentUser?.isStaff ? employeeMenuItems : superadminMenuItems;
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem('superadmin_token');
+    localStorage.removeItem('token');
     navigate('/login');
   };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const token = localStorage.getItem('superadmin_token');
+        const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
         if (!token) {
           navigate('/login');
           return;
         }
 
         const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+        
+        // 1. Fetch current user profile first
+        const meRes = await fetch(`${envUrl}/api/superadmin/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!meRes.ok) {
+          localStorage.removeItem('superadmin_token');
+          localStorage.removeItem('token');
+          navigate('/login');
+          return;
+        }
+        const meData = await meRes.json();
+        setCurrentUser(meData);
+
+        // 2. Fetch general platform admin data
         const API_BASE_URL = `${envUrl}/api/superadmin`;
         const response = await fetch(`${API_BASE_URL}/data`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -54,10 +80,8 @@ const SuperAdminMainpanel = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // Fetch platform settings (this is a public route, but we can call it)
-        const envPublicUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
-        const API_PUBLIC_URL = envPublicUrl;
-        const responseSettings = await fetch(`${API_PUBLIC_URL}/api/platform-settings`);
+        // Fetch platform settings (public route)
+        const responseSettings = await fetch(`${envUrl}/api/platform-settings`);
 
         if (response.ok) {
           const data = await response.json();
@@ -82,9 +106,15 @@ const SuperAdminMainpanel = () => {
     fetchDashboardData();
   }, [navigate]);
 
+  // Employee-specific routing redirect: if they land on overview, redirect to profile
+  useEffect(() => {
+    if (currentUser?.isStaff && (location.pathname === '/dashboard' || location.pathname === '/dashboard/overview' || location.pathname === '/dashboard/')) {
+      navigate('/dashboard/profile', { replace: true });
+    }
+  }, [currentUser, location.pathname, navigate]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-xl text-slate-500 bg-slate-50">Loading Platform Data...</div>;
 
-  const location = useLocation();
   const activeTabId = location.pathname.split('/')[2] || 'overview';
 
   return (
@@ -101,7 +131,7 @@ const SuperAdminMainpanel = () => {
       <div className={`fixed md:relative inset-y-0 left-0 z-50 w-64 min-h-screen bg-slate-900 text-white flex flex-col shrink-0 transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 shrink-0">
           {platformSettings.mainLogoUrl ? (
-            <img src={platformSettings.mainLogoUrl} alt="Platform Logo" className="h-14 w-50 rounded-full object-contain bg-white px-2 py-1 rounded" />
+            <img src={platformSettings.mainLogoUrl} alt="Platform Logo" className="h-14 w-full object-contain bg-white px-2 py-1 rounded" />
           ) : (
             <span className="text-xl font-black tracking-wide text-white">GB <span className="text-blue-500">SYSADMIN</span></span>
           )}
@@ -139,7 +169,7 @@ const SuperAdminMainpanel = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
         {/* Top Navigation Bar */}
         <nav className="bg-white shadow-sm border-b border-slate-200 px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-10 shrink-0">
           <div className="flex items-center gap-3 sm:gap-4">
@@ -152,17 +182,20 @@ const SuperAdminMainpanel = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm border border-blue-200">
-              SA
+            <div className="flex flex-col items-end hidden sm:block">
+              <span className="text-sm font-bold text-slate-800">{currentUser?.name || 'Super Admin'}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{currentUser?.role || 'System'}</span>
+            </div>
+            <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm border border-blue-200 uppercase">
+              {currentUser?.name ? currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2) : 'SA'}
             </div>
           </div>
         </nav>
 
-        <main className="w-full p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-        {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">{error}</div>}
-
-        <Outlet context={{ users, setUsers, stores, plans, setPlans, platformSettings, setPlatformSettings }} />
-      </main>
+        <main className="w-full flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+          {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">{error}</div>}
+          <Outlet context={{ users, setUsers, stores, plans, setPlans, platformSettings, setPlatformSettings, currentUser, setCurrentUser }} />
+        </main>
       </div>
     </div>
   );

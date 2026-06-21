@@ -17,6 +17,12 @@ import SettingsTab from './pages/SettingsTab';
 import StaffTab from './pages/StaffTab';
 import SuperadminManageStoreType from './pages/SuperadminManageStoreType';
 
+// Employee-specific tabs
+import ProfileTab from './pages/ProfileTab';
+import PerformanceTab from './pages/PerformanceTab';
+import MyStoreTab from './pages/MyStoreTab';
+import EarningTab from './pages/EarningTab';
+
 // Authentication Wrapper Component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token'); // Check if user is logged in
@@ -45,6 +51,12 @@ function App() {
           <Route path="socials" element={<SocialsTab />} />
           <Route path="settings" element={<SettingsTab />} />
           <Route path="store-types" element={<SuperadminManageStoreType />} />
+          
+          {/* Employee Routes */}
+          <Route path="profile" element={<ProfileTab />} />
+          <Route path="performance" element={<PerformanceTab />} />
+          <Route path="my-store" element={<MyStoreTab />} />
+          <Route path="earning" element={<EarningTab />} />
         </Route>
         
         {/* Redirect root and old dashboard URL to the new default */}
