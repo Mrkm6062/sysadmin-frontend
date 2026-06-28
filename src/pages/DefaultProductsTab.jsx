@@ -20,6 +20,8 @@ const DefaultProductsTab = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [isImporting, setIsImporting] = useState(false);
+  const [importTotalCount, setImportTotalCount] = useState(0);
+  const [importProgressCount, setImportProgressCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -197,6 +199,9 @@ const DefaultProductsTab = () => {
       const rows = text.split('\n').filter(line => line.trim()).map(parseCSVRow);
       const dataRows = rows.slice(1).filter(r => r.length >= 9); // Require minimum columns
 
+      setImportTotalCount(dataRows.length);
+      setImportProgressCount(0);
+
       const token = localStorage.getItem('superadmin_token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
 
@@ -218,7 +223,12 @@ const DefaultProductsTab = () => {
       // Process new products sequentially
       for (const row of newProducts) {
         const [idRaw, name, category, foodtype, storeTypesRaw, basePrice, totalStock, unitType, isActive, description] = row;
-        if (!name || !name.trim()) { failCount++; errors.push(`Skipped row with empty name`); continue; }
+        if (!name || !name.trim()) { 
+          failCount++; 
+          errors.push(`Skipped row with empty name`); 
+          setImportProgressCount(prev => prev + 1);
+          continue; 
+        }
         
         const payload = {
           name: name.trim(), category: category ? category.trim() : '', foodtype: foodtype ? foodtype.trim() : '', unitType: (unitType || 'piece').trim(), description: (description || '').trim(),
@@ -239,6 +249,9 @@ const DefaultProductsTab = () => {
             errors.push(`"${payload.name}": ${errData.message || `HTTP ${response.status}`}`); 
           }
         } catch (e) { failCount++; errors.push(`"${(payload.name || 'unknown')}": Network error - ${e.message}`); }
+        finally {
+          setImportProgressCount(prev => prev + 1);
+        }
       }
 
       // Process updates in parallel batches
@@ -266,6 +279,9 @@ const DefaultProductsTab = () => {
               errors.push(`Update "${payload.name}": ${errData.message || `HTTP ${response.status}`}`); 
             }
           } catch (e) { failCount++; errors.push(`Update "${(payload.name || id)}": Network error - ${e.message}`); }
+          finally {
+            setImportProgressCount(prev => prev + 1);
+          }
         });
         await Promise.all(promises);
       }
@@ -292,7 +308,30 @@ const DefaultProductsTab = () => {
   };
 
   if (loading) return <div className="p-8 text-center text-slate-500 font-bold">Loading Default Products...</div>;
-  if (isImporting) return <div className="p-20 text-center text-blue-500 font-bold animate-pulse text-xl">Importing CSV, please wait... This may take a moment for thousands of products.</div>;
+  if (isImporting) {
+    return (
+      <div className="p-20 text-center text-blue-600 flex flex-col items-center justify-center min-h-[400px] bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-6"></div>
+        <h3 className="text-2xl font-extrabold text-slate-800 mb-2">Importing CSV Data...</h3>
+        <p className="text-slate-500 max-w-md mb-6 font-medium text-sm">
+          Processing and importing default product catalogs. This may take a moment for larger databases.
+        </p>
+        
+        {/* Progress Bar */}
+        <div className="w-full max-w-md bg-slate-100 rounded-full h-3 mb-3 border border-slate-200 overflow-hidden relative">
+          <div 
+            className="bg-blue-600 h-full rounded-full transition-all duration-300 shadow-sm"
+            style={{ width: `${importTotalCount > 0 ? (importProgressCount / importTotalCount) * 100 : 0}%` }}
+          />
+        </div>
+        
+        {/* Progress Statistics */}
+        <div className="text-sm font-bold text-slate-700">
+          Processed: {importProgressCount} of {importTotalCount} Products ({importTotalCount > 0 ? Math.round((importProgressCount / importTotalCount) * 100) : 0}%)
+        </div>
+      </div>
+    );
+  }
 
   const filteredProducts = defaultProducts.filter(product => {
     const storeTypeMatch = filterStoreType === 'all' || (product.storeTypes && product.storeTypes.includes(filterStoreType));
