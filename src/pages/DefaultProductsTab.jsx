@@ -5,7 +5,11 @@ const DefaultProductsTab = () => {
   const [defaultProducts, setDefaultProducts] = useState([]);
   const [isDefaultProductFormOpen, setIsDefaultProductFormOpen] = useState(false);
   const [editingDefaultProductId, setEditingDefaultProductId] = useState(null);
-  const [defaultProductForm, setDefaultProductForm] = useState({ name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece', storeTypes: '', category: '', foodtype: '', isActive: true, images: [], variants: [] });
+  const [defaultProductForm, setDefaultProductForm] = useState({
+    name: '', description: '', basePrice: '', totalStock: '', unitType: 'piece',
+    storeTypes: '', category: '', foodtype: '', isActive: true, images: [], variants: [],
+    keyFeaturesEnabled: false, specificationsEnabled: false, keyFeatures: [''], specifications: [{ name: '', value: '' }]
+  });
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [mediaImages, setMediaImages] = useState([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -118,8 +122,16 @@ const DefaultProductsTab = () => {
       const method = editingDefaultProductId ? 'PUT' : 'POST';
       const url = editingDefaultProductId ? `${envUrl}/api/superadmin/default-products/${editingDefaultProductId}` : `${envUrl}/api/superadmin/default-products`;
       const variantsData = defaultProductForm.variants.map(v => ({ ...v, price: Number(v.price), stock: Number(v.stock) }));
-      const calculatedTotalStock = variantsData.length > 0 ? variantsData.reduce((acc, curr) => acc + curr.stock, 0) : (Number(defaultProductForm.totalStock) || 0);
-      const payload = { ...defaultProductForm, storeTypes: typeof defaultProductForm.storeTypes === 'string' ? defaultProductForm.storeTypes.split(',').map(s => s.trim()).filter(Boolean) : defaultProductForm.storeTypes, basePrice: Number(defaultProductForm.basePrice) || 0, totalStock: calculatedTotalStock, images: defaultProductForm.images, variants: variantsData };
+      const payload = {
+        ...defaultProductForm,
+        storeTypes: typeof defaultProductForm.storeTypes === 'string' ? defaultProductForm.storeTypes.split(',').map(s => s.trim()).filter(Boolean) : defaultProductForm.storeTypes,
+        basePrice: Number(defaultProductForm.basePrice) || 0,
+        totalStock: variantsData.length > 0 ? variantsData.reduce((acc, curr) => acc + curr.stock, 0) : (Number(defaultProductForm.totalStock) || 0),
+        images: defaultProductForm.images,
+        variants: variantsData,
+        keyFeatures: (defaultProductForm.keyFeatures || []).map(f => f.trim()).filter(Boolean),
+        specifications: (defaultProductForm.specifications || []).map(s => ({ name: s.name.trim(), value: s.value.trim() })).filter(s => s.name && s.value)
+      };
 
       const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(payload) });
       if (response.ok) {
@@ -140,7 +152,23 @@ const DefaultProductsTab = () => {
   };
 
   const editDefaultProduct = (product) => {
-    setDefaultProductForm({ name: product.name || '', description: product.description || '', basePrice: product.basePrice || '', totalStock: product.totalStock !== undefined ? product.totalStock : (product.stock || ''), unitType: product.unitType || 'piece', storeTypes: (product.storeTypes && product.storeTypes.length > 0) ? product.storeTypes[0] : (storeTypesList.length > 0 ? storeTypesList[0].name : ''), category: product.category || '', foodtype: product.foodtype || '', isActive: product.isActive !== false, images: product.images || [], variants: product.variants || [] });
+    setDefaultProductForm({
+      name: product.name || '',
+      description: product.description || '',
+      basePrice: product.basePrice || '',
+      totalStock: product.totalStock !== undefined ? product.totalStock : (product.stock || ''),
+      unitType: product.unitType || 'piece',
+      storeTypes: (product.storeTypes && product.storeTypes.length > 0) ? product.storeTypes[0] : (storeTypesList.length > 0 ? storeTypesList[0].name : ''),
+      category: product.category || '',
+      foodtype: product.foodtype || '',
+      isActive: product.isActive !== false,
+      images: product.images || [],
+      variants: product.variants || [],
+      keyFeaturesEnabled: product.keyFeaturesEnabled || false,
+      specificationsEnabled: product.specificationsEnabled || false,
+      keyFeatures: product.keyFeatures && product.keyFeatures.length > 0 ? product.keyFeatures : [''],
+      specifications: product.specifications && product.specifications.length > 0 ? product.specifications : [{ name: '', value: '' }]
+    });
     setEditingDefaultProductId(product._id);
     setIsDefaultProductFormOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -447,6 +475,130 @@ const DefaultProductsTab = () => {
                     </div>
                   ))}
                 </div>
+                {/* Key Features & Specifications */}
+                <div className="space-y-6 bg-slate-50 p-6 rounded-2xl border border-slate-100 text-left">
+                  <h4 className="font-bold text-lg border-b border-slate-200 pb-2 text-slate-800">Features & Specifications</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Key Features */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          id="keyFeaturesEnabled" 
+                          checked={defaultProductForm.keyFeaturesEnabled || false} 
+                          onChange={e => setDefaultProductForm({ ...defaultProductForm, keyFeaturesEnabled: e.target.checked })} 
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer" 
+                        />
+                        <label htmlFor="keyFeaturesEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Enable Key Features</label>
+                      </div>
+
+                      {defaultProductForm.keyFeaturesEnabled && (
+                        <div className="space-y-2.5">
+                          {defaultProductForm.keyFeatures?.map((feature, fIdx) => (
+                            <div key={fIdx} className="flex items-center gap-2">
+                              <input 
+                                type="text" 
+                                value={feature} 
+                                onChange={e => {
+                                  const newFeatures = [...(defaultProductForm.keyFeatures || [])];
+                                  newFeatures[fIdx] = e.target.value;
+                                  setDefaultProductForm({ ...defaultProductForm, keyFeatures: newFeatures });
+                                }} 
+                                placeholder="e.g. 100% Organic Cotton" 
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                              />
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  setDefaultProductForm({
+                                    ...defaultProductForm,
+                                    keyFeatures: defaultProductForm.keyFeatures.filter((_, idx) => idx !== fIdx)
+                                  });
+                                }} 
+                                className="text-red-500 hover:text-red-700 text-lg font-bold p-1 bg-red-50 hover:bg-red-100 rounded-lg transition"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
+                          <button 
+                            type="button" 
+                            onClick={() => setDefaultProductForm({ ...defaultProductForm, keyFeatures: [...(defaultProductForm.keyFeatures || []), ''] })} 
+                            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                          >
+                            + Add Key Feature
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Specifications */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          id="specificationsEnabled" 
+                          checked={defaultProductForm.specificationsEnabled || false} 
+                          onChange={e => setDefaultProductForm({ ...defaultProductForm, specificationsEnabled: e.target.checked })} 
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer" 
+                        />
+                        <label htmlFor="specificationsEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Enable Specifications</label>
+                      </div>
+
+                      {defaultProductForm.specificationsEnabled && (
+                        <div className="space-y-2.5">
+                          {defaultProductForm.specifications?.map((spec, sIdx) => (
+                            <div key={sIdx} className="flex items-center gap-2">
+                              <input 
+                                type="text" 
+                                value={spec.name} 
+                                onChange={e => {
+                                  const newSpecs = [...(defaultProductForm.specifications || [])];
+                                  newSpecs[sIdx].name = e.target.value;
+                                  setDefaultProductForm({ ...defaultProductForm, specifications: newSpecs });
+                                }} 
+                                placeholder="Name (e.g. Weight)" 
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                              />
+                              <input 
+                                type="text" 
+                                value={spec.value} 
+                                onChange={e => {
+                                  const newSpecs = [...(defaultProductForm.specifications || [])];
+                                  newSpecs[sIdx].value = e.target.value;
+                                  setDefaultProductForm({ ...defaultProductForm, specifications: newSpecs });
+                                }} 
+                                placeholder="Value (e.g. 500g)" 
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                              />
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  setDefaultProductForm({
+                                    ...defaultProductForm,
+                                    specifications: defaultProductForm.specifications.filter((_, idx) => idx !== sIdx)
+                                  });
+                                }} 
+                                className="text-red-500 hover:text-red-700 text-lg font-bold p-1 bg-red-50 hover:bg-red-100 rounded-lg transition animate-fadeIn"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
+                          <button 
+                            type="button" 
+                            onClick={() => setDefaultProductForm({ ...defaultProductForm, specifications: [...(defaultProductForm.specifications || []), { name: '', value: '' }] })} 
+                            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                          >
+                            + Add Specification
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-4 border-t border-slate-100 pt-4"><label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={defaultProductForm.isActive} onChange={e => setDefaultProductForm({...defaultProductForm, isActive: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Active (Visible to Stores)</label></div>
               </form>
             </div>
