@@ -111,16 +111,63 @@ const SuperadminManageThemes = ({ token: propToken, stores: propStores, onLogout
     setIsEditing(false);
   };
 
+  // Helper to convert images to WebP client-side before upload
+  const convertToWebP = (file, quality = 0.85) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const newName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+                const webpFile = new File([blob], newName, { type: 'image/webp' });
+                resolve(webpFile);
+              } else {
+                reject(new Error('WebP blob creation returned null.'));
+              }
+            },
+            'image/webp',
+            quality
+          );
+        };
+        img.onerror = () => reject(new Error('Failed to load image.'));
+        img.src = event.target.result;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file.'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    setLoading(true);
+    setStatus('Converting image to WebP...');
+    
+    let fileToUpload = file;
+    if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+      try {
+        fileToUpload = await convertToWebP(file, 0.85);
+      } catch (err) {
+        console.error("Local WebP conversion failed, using original file", err);
+      }
+    }
+
     const uploadData = new FormData();
     uploadData.append('storeId', '000000000000000000000000'); // Store in superadmin global folder
     uploadData.append('type', 'product');
-    uploadData.append('images', file); 
+    uploadData.append('images', fileToUpload); 
 
-    setLoading(true);
     setStatus('Uploading image...');
     setUploadProgress(0);
     setUploadSpeed('Calculating...');
