@@ -17,8 +17,7 @@ const PlansTab = () => {
     popular: false,
     limits: {
       maxProducts: 20,
-      storageLimit: 500,
-      storeLimit: 1
+      storageLimit: 500
     },
     billing: [
       { durationMonths: 1, price: 0, discountEnabled: false, discountValue: 0 },
@@ -74,8 +73,7 @@ const PlansTab = () => {
         popular: planForm.popular,
         limits: {
           maxProducts: Number(planForm.limits.maxProducts),
-          storageLimit: Number(planForm.limits.storageLimit),
-          storeLimit: Number(planForm.limits.storeLimit)
+          storageLimit: Number(planForm.limits.storageLimit)
         },
         billing: planForm.billing.map(b => ({
           durationMonths: Number(b.durationMonths),
@@ -177,8 +175,7 @@ const PlansTab = () => {
       popular: plan.popular || false,
       limits: {
         maxProducts: plan.limits?.maxProducts || 20,
-        storageLimit: plan.limits?.storageLimit || 500,
-        storeLimit: plan.limits?.storeLimit || 1
+        storageLimit: plan.limits?.storageLimit || 500
       },
       billing: [
         getDurationObj(1),
@@ -354,42 +351,31 @@ const PlansTab = () => {
                 </label>
               </div>
 
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 border-t pt-4">Usage Limits</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Max Products Allowed</label>
-                  <input 
-                    type="number" 
-                    value={planForm.limits.maxProducts} 
-                    onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, maxProducts: e.target.value }})} 
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Max Stores Allowed</label>
-                  <input 
-                    type="number" 
-                    value={planForm.limits.storeLimit} 
-                    onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, storeLimit: e.target.value }})} 
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-                    required 
-                    min="1" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Storage Limit (in MB)</label>
-                  <input 
-                    type="number" 
-                    value={planForm.limits.storageLimit} 
-                    onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, storageLimit: e.target.value }})} 
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
-                    required 
-                    placeholder="500 = 500MB, 2000 = 2GB" 
-                    min="1" 
-                  />
-                </div>
-              </div>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 border-t pt-4">Usage Limits</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Max Products Allowed</label>
+              <input 
+                type="number" 
+                value={planForm.limits.maxProducts} 
+                onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, maxProducts: e.target.value }})} 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                required 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Storage Limit (in MB)</label>
+              <input 
+                type="number" 
+                value={planForm.limits.storageLimit} 
+                onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, storageLimit: e.target.value }})} 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                required 
+                placeholder="500 = 500MB, 2000 = 2GB" 
+                min="1" 
+              />
+            </div>
+          </div>
 
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 border-t pt-4">Pricing & Billing Cycles</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -435,7 +421,7 @@ const PlansTab = () => {
                           />
                           {bill.discountValue > 0 && (
                             <div className="mt-1 text-xs font-bold text-green-600 bg-green-50 p-1.5 rounded border border-green-100">
-                              After Discount: ₹{(bill.price - (bill.price * bill.discountValue / 100)).toFixed(2)}
+                              After Discount: ₹{Math.round(bill.price - (bill.price * bill.discountValue / 100))}
                             </div>
                           )}
                         </div>
@@ -504,7 +490,7 @@ const PlansTab = () => {
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pricing Rates</h4>
                   <div className="space-y-1.5">
                     {plan.billing?.map(b => {
-                      const finalPrice = b.discountEnabled ? b.price - (b.price * b.discountValue / 100) : b.price;
+                      const finalPrice = b.discountEnabled ? Math.round(b.price - (b.price * b.discountValue / 100)) : b.price;
                       return (
                         <div key={b.durationMonths} className="flex justify-between text-sm">
                           <span className="text-slate-600 font-medium">{b.durationMonths} Mo. Cycle:</span>
@@ -526,7 +512,6 @@ const PlansTab = () => {
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Limits</h4>
                   <ul className="space-y-1 text-sm text-slate-600 font-medium">
                     <li>• Max Products: <span className="font-bold text-slate-800">{plan.limits?.maxProducts || 0}</span></li>
-                    <li>• Max Stores: <span className="font-bold text-slate-800">{plan.limits?.storeLimit || 1}</span></li>
                     <li>• Storage Capacity: <span className="font-bold text-slate-800">
                       {plan.limits?.storageLimit ? (plan.limits.storageLimit >= 1000 ? `${plan.limits.storageLimit / 1000}GB` : `${plan.limits.storageLimit}MB`) : '500MB'}
                     </span></li>
