@@ -1,13 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 const PlansTab = () => {
   const [isPlanFormOpen, setIsPlanFormOpen] = useState(false);
+  const [featuresList, setFeaturesList] = useState([]);
   const [error, setError] = useState('');
   const { plans, setPlans } = useOutletContext();
-  const [planForm, setPlanForm] = useState({
-    name: 'Starter', price: 0, maxProducts: 50, storeLimit: 1, storageLimit: 500, customDomain: false, freeSsl: false, securityHeaders: false, basicAnalytics: false, advanceAnalytics: false, whatsappOrderButton: false, sevenDaysTrial: true, themes: false, prioritySupport: false
-  });
+
+  const initialFormState = {
+    _id: '',
+    name: 'Starter',
+    description: '',
+    active: true,
+    popular: false,
+    limits: {
+      maxProducts: 20,
+      storageLimit: 500,
+      storeLimit: 1
+    },
+    billing: [
+      { durationMonths: 1, price: 0, discountEnabled: false, discountValue: 0 },
+      { durationMonths: 6, price: 0, discountEnabled: false, discountValue: 0 },
+      { durationMonths: 12, price: 0, discountEnabled: false, discountValue: 0 }
+    ],
+    features: []
+  };
+
+  const [planForm, setPlanForm] = useState(initialFormState);
+
+  // Fetch all features from superadmin features endpoint
+  useEffect(() => {
+    const fetchFeatures = async () => {
+      try {
+        const token = localStorage.getItem('superadmin_token');
+        const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+        const res = await fetch(`${envUrl}/api/superadmin/features`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setFeaturesList(await res.json());
+        }
+      } catch (err) {
+        console.error('Failed to load platform features:', err);
+      }
+    };
+    fetchFeatures();
+  }, []);
 
   const handleSavePlan = async (e) => {
     e.preventDefault();
@@ -16,25 +54,45 @@ const PlansTab = () => {
       const token = localStorage.getItem('superadmin_token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
       
+      const payload = {
+        _id: planForm._id || undefined,
+        name: planForm.name,
+        description: planForm.description,
+        active: planForm.active,
+        popular: planForm.popular,
+        limits: {
+          maxProducts: Number(planForm.limits.maxProducts),
+          storageLimit: Number(planForm.limits.storageLimit),
+          storeLimit: Number(planForm.limits.storeLimit)
+        },
+        billing: planForm.billing.map(b => ({
+          durationMonths: Number(b.durationMonths),
+          price: Number(b.price),
+          discountEnabled: !!b.discountEnabled,
+          discountType: 'percentage',
+          discountValue: Number(b.discountValue)
+        })),
+        features: planForm.features.map(f => ({
+          feature: f.feature,
+          name: f.name
+        }))
+      };
+
       const response = await fetch(`${envUrl}/api/superadmin/plans`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          name: planForm.name, price: Number(planForm.price),
-          features: {
-            maxProducts: Number(planForm.maxProducts), storeLimit: Number(planForm.storeLimit), storageLimit: Number(planForm.storageLimit), customDomain: planForm.customDomain, freeSsl: planForm.freeSsl, securityHeaders: planForm.securityHeaders, basicAnalytics: planForm.basicAnalytics, advanceAnalytics: planForm.advanceAnalytics, whatsappOrderButton: planForm.whatsappOrderButton, sevenDaysTrial: planForm.sevenDaysTrial, themes: planForm.themes, prioritySupport: planForm.prioritySupport
-          }
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
         const savedPlan = await response.json();
         setPlans(prev => {
-          const exists = prev.find(p => p.name === savedPlan.name);
-          if (exists) return prev.map(p => p.name === savedPlan.name ? savedPlan : p);
+          const exists = prev.find(p => p._id === savedPlan._id);
+          if (exists) return prev.map(p => p._id === savedPlan._id ? savedPlan : p);
           return [...prev, savedPlan];
         });
         setIsPlanFormOpen(false);
+        setPlanForm(initialFormState);
       } else {
         const data = await response.json();
         setError(data.message || 'Failed to save plan');
@@ -45,18 +103,98 @@ const PlansTab = () => {
   };
 
   const editPlan = (plan) => {
+    const getDurationObj = (months) => {
+      const found = plan.billing?.find(b => b.durationMonths === months);
+      return found ? {
+        durationMonths: found.durationMonths,
+        price: found.price,
+        discountEnabled: found.discountEnabled || false,
+        discountValue: found.discountValue || 0
+      } : {
+        durationMonths: months,
+        price: 0,
+        discountEnabled: false,
+        discountValue: 0
+      };
+    };
+
     setPlanForm({
-      name: plan.name, price: plan.price, maxProducts: plan.features.maxProducts, storeLimit: plan.features.storeLimit || 1, storageLimit: plan.features.storageLimit || 500, customDomain: plan.features.customDomain, freeSsl: plan.features.freeSsl || false, securityHeaders: plan.features.securityHeaders || false, basicAnalytics: plan.features.basicAnalytics || false, advanceAnalytics: plan.features.advanceAnalytics || false, whatsappOrderButton: plan.features.whatsappOrderButton || false, sevenDaysTrial: plan.features.sevenDaysTrial ?? true, themes: plan.features.themes, prioritySupport: plan.features.prioritySupport
+      _id: plan._id,
+      name: plan.name,
+      description: plan.description || '',
+      active: plan.active !== undefined ? plan.active : true,
+      popular: plan.popular || false,
+      limits: {
+        maxProducts: plan.limits?.maxProducts || 20,
+        storageLimit: plan.limits?.storageLimit || 500,
+        storeLimit: plan.limits?.storeLimit || 1
+      },
+      billing: [
+        getDurationObj(1),
+        getDurationObj(6),
+        getDurationObj(12)
+      ],
+      features: plan.features?.map(f => ({
+        feature: f.feature?._id || f.feature,
+        name: f.name
+      })) || []
     });
     setIsPlanFormOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeletePlan = async (planId) => {
+    if (!window.confirm("Are you sure you want to delete this subscription plan?")) return;
+    try {
+      const token = localStorage.getItem('superadmin_token');
+      const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
+      
+      const response = await fetch(`${envUrl}/api/superadmin/plans/${planId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setPlans(prev => prev.filter(p => p._id !== planId));
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Failed to delete plan');
+      }
+    } catch (err) {
+      setError('Network error while deleting plan');
+    }
+  };
+
+  const handleFeatureToggle = (featureItem) => {
+    setPlanForm(prev => {
+      const exists = prev.features.some(f => f.feature === featureItem._id);
+      let updatedFeatures;
+      if (exists) {
+        updatedFeatures = prev.features.filter(f => f.feature !== featureItem._id);
+      } else {
+        updatedFeatures = [...prev.features, { feature: featureItem._id, name: featureItem.name }];
+      }
+      return { ...prev, features: updatedFeatures };
+    });
+  };
+
+  const handleBillingChange = (index, field, value) => {
+    setPlanForm(prev => {
+      const updatedBilling = prev.billing.map((b, idx) => {
+        if (idx === index) {
+          return { ...b, [field]: value };
+        }
+        return b;
+      });
+      return { ...prev, billing: updatedBilling };
+    });
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-slate-800">Subscription Plans</h2>
-        <button onClick={() => { setPlanForm({ name: 'Starter', price: 0, maxProducts: 50, storeLimit: 1, storageLimit: 500, customDomain: false, freeSsl: false, securityHeaders: false, basicAnalytics: false, advanceAnalytics: false, whatsappOrderButton: false, sevenDaysTrial: true, themes: false, prioritySupport: false }); setIsPlanFormOpen(!isPlanFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
+        <button onClick={() => { setPlanForm(initialFormState); setIsPlanFormOpen(!isPlanFormOpen); }} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
           {isPlanFormOpen ? 'Cancel' : '+ Add / Edit Plan'}
         </button>
       </div>
@@ -65,51 +203,248 @@ const PlansTab = () => {
 
       {isPlanFormOpen && (
         <form onSubmit={handleSavePlan} className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8 animate-fadeIn">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Plan Name</label><select value={planForm.name} onChange={e => setPlanForm({...planForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"><option value="Starter">Starter</option><option value="Basic">Basic</option><option value="Pro">Pro</option><option value="Premium">Premium</option></select></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Monthly Price (₹)</label><input type="number" value={planForm.price} onChange={e => setPlanForm({...planForm, price: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Max Products Allowed</label><input type="number" value={planForm.maxProducts} onChange={e => setPlanForm({...planForm, maxProducts: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required /></div>
-          </div>
+          {/* Section 1: Basic Info */}
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">Plan Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Max Stores Allowed</label><input type="number" value={planForm.storeLimit} onChange={e => setPlanForm({...planForm, storeLimit: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required min="1" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Storage Limit (in MB)</label><input type="number" value={planForm.storageLimit} onChange={e => setPlanForm({...planForm, storageLimit: e.target.value})} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required placeholder="500 = 500MB, 2000 = 2GB" min="1" /></div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Plan Name</label>
+              <input 
+                type="text" 
+                value={planForm.name} 
+                onChange={e => setPlanForm({...planForm, name: e.target.value})} 
+                placeholder="Starter, Basic, Pro, etc." 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                required 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
+              <input 
+                type="text" 
+                value={planForm.description} 
+                onChange={e => setPlanForm({...planForm, description: e.target.value})} 
+                placeholder="Summarize the plan tier values" 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+              />
+            </div>
           </div>
+
+          <div className="flex gap-6 mb-6">
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700">
+              <input 
+                type="checkbox" 
+                checked={planForm.active} 
+                onChange={e => setPlanForm({...planForm, active: e.target.checked})} 
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+              />
+              Active Plan (Visible to Customers)
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700">
+              <input 
+                type="checkbox" 
+                checked={planForm.popular} 
+                onChange={e => setPlanForm({...planForm, popular: e.target.checked})} 
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+              />
+              Mark as Popular / Recommended
+            </label>
+          </div>
+
+          {/* Section 2: Limits */}
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 border-t pt-4">Usage Limits</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Max Products Allowed</label>
+              <input 
+                type="number" 
+                value={planForm.limits.maxProducts} 
+                onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, maxProducts: e.target.value }})} 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                required 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Max Stores Allowed</label>
+              <input 
+                type="number" 
+                value={planForm.limits.storeLimit} 
+                onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, storeLimit: e.target.value }})} 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                required 
+                min="1" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Storage Limit (in MB)</label>
+              <input 
+                type="number" 
+                value={planForm.limits.storageLimit} 
+                onChange={e => setPlanForm({...planForm, limits: { ...planForm.limits, storageLimit: e.target.value }})} 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" 
+                required 
+                placeholder="500 = 500MB, 2000 = 2GB" 
+                min="1" 
+              />
+            </div>
+          </div>
+
+          {/* Section 3: Billing Durations */}
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 border-t pt-4">Pricing & Billing cycles</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {planForm.billing.map((bill, index) => (
+              <div key={bill.durationMonths} className="bg-white p-4 rounded-lg border border-slate-200">
+                <h4 className="font-bold text-slate-700 text-sm mb-3">
+                  {bill.durationMonths} Month{bill.durationMonths > 1 ? 's' : ''} Cycle
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Price (₹)</label>
+                    <input 
+                      type="number" 
+                      value={bill.price} 
+                      onChange={e => handleBillingChange(index, 'price', e.target.value)} 
+                      className="w-full px-3 py-1.5 border text-sm rounded-md focus:ring-2 focus:ring-blue-500 outline-none" 
+                      required 
+                      min="0" 
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-600 mt-1">
+                      <input 
+                        type="checkbox" 
+                        checked={bill.discountEnabled} 
+                        onChange={e => handleBillingChange(index, 'discountEnabled', e.target.checked)} 
+                        className="w-3.5 h-3.5 text-blue-600 rounded" 
+                      />
+                      Enable Discount
+                    </label>
+                  </div>
+                  {bill.discountEnabled && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Discount %</label>
+                      <input 
+                        type="number" 
+                        value={bill.discountValue} 
+                        onChange={e => handleBillingChange(index, 'discountValue', e.target.value)} 
+                        className="w-full px-3 py-1.5 border text-sm rounded-md focus:ring-2 focus:ring-blue-500 outline-none" 
+                        required 
+                        min="0" 
+                        max="100" 
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Section 4: Features Select List */}
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 border-t pt-4">Select Included Features</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.customDomain} onChange={e => setPlanForm({...planForm, customDomain: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Custom Domain</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.freeSsl} onChange={e => setPlanForm({...planForm, freeSsl: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Free SSL/TLS HTTPS</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.securityHeaders} onChange={e => setPlanForm({...planForm, securityHeaders: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Free Security Headers</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.basicAnalytics} onChange={e => setPlanForm({...planForm, basicAnalytics: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Basic Analytics</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.advanceAnalytics} onChange={e => setPlanForm({...planForm, advanceAnalytics: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Advance Analytics</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.whatsappOrderButton} onChange={e => setPlanForm({...planForm, whatsappOrderButton: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />WhatsApp Order Button</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.sevenDaysTrial} onChange={e => setPlanForm({...planForm, sevenDaysTrial: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />7-Days Trial</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.themes} onChange={e => setPlanForm({...planForm, themes: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Premium Themes</label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700"><input type="checkbox" checked={planForm.prioritySupport} onChange={e => setPlanForm({...planForm, prioritySupport: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />Priority Support</label>
+            {featuresList.map(featureItem => {
+              const isChecked = planForm.features.some(f => f.feature === featureItem._id);
+              return (
+                <label key={featureItem._id} className="flex items-start gap-2 cursor-pointer text-sm font-medium text-slate-700 p-2 bg-white border border-slate-100 rounded-lg hover:border-blue-200 transition">
+                  <input 
+                    type="checkbox" 
+                    checked={isChecked} 
+                    onChange={() => handleFeatureToggle(featureItem)} 
+                    className="w-4 h-4 text-blue-600 rounded mt-0.5" 
+                  />
+                  <div>
+                    <span className="font-semibold block leading-tight text-slate-800">{featureItem.name}</span>
+                    <span className="text-[10px] text-slate-400 font-normal leading-tight block mt-0.5">{featureItem.description}</span>
+                  </div>
+                </label>
+              );
+            })}
+            {featuresList.length === 0 && (
+              <div className="col-span-4 text-xs text-amber-600 bg-amber-50 p-3 rounded-lg">
+                No active features found. Please make sure features are created in the database.
+              </div>
+            )}
           </div>
-          <button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">Save Plan Configuration</button>
+
+          <button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
+            Save Plan Configuration
+          </button>
         </form>
       )}
 
+      {/* Grid listing plans */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map(plan => (
-          <div key={plan._id} className="border border-slate-200 rounded-xl p-6 hover:shadow-md transition">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
-              <button onClick={() => editPlan(plan)} className="text-sm text-blue-600 font-bold hover:underline">Edit</button>
+          <div key={plan._id} className={`border rounded-xl p-6 hover:shadow-md transition relative ${plan.popular ? 'border-blue-500 shadow-sm' : 'border-slate-200'}`}>
+            {plan.popular && (
+              <span className="absolute -top-3 left-6 bg-blue-600 text-white font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full">
+                Popular
+              </span>
+            )}
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${plan.active ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                  {plan.active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className="flex gap-2.5">
+                <button onClick={() => editPlan(plan)} className="text-xs text-blue-600 font-bold hover:underline">Edit</button>
+                <button onClick={() => handleDeletePlan(plan._id)} className="text-xs text-red-600 font-bold hover:underline">Delete</button>
+              </div>
             </div>
-            <p className="text-3xl font-extrabold text-slate-900 mb-4">₹{plan.price}<span className="text-sm font-medium text-slate-500">/mo</span></p>
-            <ul className="space-y-2 text-sm text-slate-600">
-              <li className="flex items-center gap-2">✓ Up to {plan.features.maxProducts} Products</li>
-              <li className="flex items-center gap-2">✓ {plan.features.storageLimit ? (plan.features.storageLimit >= 1000 ? `${plan.features.storageLimit / 1000}GB` : `${plan.features.storageLimit}MB`) : '500MB'} Storage</li>
-              <li className="flex items-center gap-2">{plan.features.customDomain ? '✓' : '✕'} Custom Domain</li>
-              <li className="flex items-center gap-2">{plan.features.freeSsl ? '✓' : '✕'} Free SSL/TLS HTTPS</li>
-              <li className="flex items-center gap-2">{plan.features.securityHeaders ? '✓' : '✕'} Free Security Headers</li>
-              <li className="flex items-center gap-2">{plan.features.basicAnalytics ? '✓' : '✕'} Basic Analytics</li>
-              <li className="flex items-center gap-2">{plan.features.advanceAnalytics ? '✓' : '✕'} Advance Analytics</li>
-              <li className="flex items-center gap-2">{plan.features.whatsappOrderButton ? '✓' : '✕'} WhatsApp Order Button</li>
-              <li className="flex items-center gap-2">{plan.features.sevenDaysTrial ? '✓' : '✕'} 7-Days Trial</li>
-              <li className="flex items-center gap-2">{plan.features.themes ? '✓' : '✕'} Premium Themes</li>
-              <li className="flex items-center gap-2">{plan.features.prioritySupport ? '✓' : '✕'} Priority Support</li>
-            </ul>
+
+            {plan.description && <p className="text-xs text-slate-400 mt-1 mb-4 italic">"{plan.description}"</p>}
+
+            {/* Display billing cards list */}
+            <div className="border-t border-slate-100 pt-4 mb-4">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pricing Rates</h4>
+              <div className="space-y-1.5">
+                {plan.billing?.map(b => {
+                  const finalPrice = b.discountEnabled ? b.price - (b.price * b.discountValue / 100) : b.price;
+                  return (
+                    <div key={b.durationMonths} className="flex justify-between text-sm">
+                      <span className="text-slate-600 font-medium">{b.durationMonths} Mo. Cycle:</span>
+                      <span className="font-bold text-slate-800">
+                        {b.discountEnabled ? (
+                          <>
+                            <span className="line-through text-slate-400 mr-1.5 font-normal">₹{b.price}</span>
+                            <span className="text-green-600 font-extrabold">₹{finalPrice}</span>
+                          </>
+                        ) : `₹${b.price}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Display limits list */}
+            <div className="border-t border-slate-100 pt-4 mb-4">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Limits</h4>
+              <ul className="space-y-1 text-sm text-slate-600 font-medium">
+                <li>• Max Products: <span className="font-bold text-slate-800">{plan.limits?.maxProducts || 0}</span></li>
+                <li>• Max Stores: <span className="font-bold text-slate-800">{plan.limits?.storeLimit || 1}</span></li>
+                <li>• Storage Capacity: <span className="font-bold text-slate-800">
+                  {plan.limits?.storageLimit ? (plan.limits.storageLimit >= 1000 ? `${plan.limits.storageLimit / 1000}GB` : `${plan.limits.storageLimit}MB`) : '500MB'}
+                </span></li>
+              </ul>
+            </div>
+
+            {/* Display list of checked features */}
+            <div className="border-t border-slate-100 pt-4">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Included Features</h4>
+              <ul className="space-y-1.5 text-xs text-slate-600">
+                {plan.features?.map((f, i) => (
+                  <li key={i} className="flex items-center gap-1.5">
+                    <span className="text-blue-500 font-bold">✓</span>
+                    <span className="font-semibold text-slate-700">{f.name}</span>
+                  </li>
+                ))}
+                {(!plan.features || plan.features.length === 0) && (
+                  <li className="text-slate-400 italic">No special features bundled.</li>
+                )}
+              </ul>
+            </div>
           </div>
         ))}
         {plans.length === 0 && !isPlanFormOpen && (
