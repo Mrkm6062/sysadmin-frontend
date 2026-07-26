@@ -433,6 +433,11 @@ const PlansTab = () => {
                             min="0" 
                             max="100" 
                           />
+                          {bill.discountValue > 0 && (
+                            <div className="mt-1 text-xs font-bold text-green-600 bg-green-50 p-1.5 rounded border border-green-100">
+                              After Discount: ₹{(bill.price - (bill.price * bill.discountValue / 100)).toFixed(2)}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
