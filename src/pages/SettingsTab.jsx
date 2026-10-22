@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
+import { Mail } from 'lucide-react';
 
 const SettingsTab = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -11,6 +12,7 @@ const SettingsTab = () => {
   const [activeXhr, setActiveXhr] = useState(null);
   const { platformSettings, setPlatformSettings } = useOutletContext();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleSaveSettings = async (newSettings) => {
     try {
@@ -204,6 +206,30 @@ const SettingsTab = () => {
           )}
 
           <div className="grid grid-cols-3 gap-4 mb-4 max-w-md">{((platformSettings.loginImageGrid || []).length > 0 ? platformSettings.loginImageGrid : Array(9).fill('')).slice(0, 9).map((img, idx) => (<div key={idx} className="relative aspect-square bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center overflow-hidden group">{img ? <img src={img} className="absolute inset-0 w-full h-full object-cover" /> : <span className="text-slate-400 text-xs z-10">Image {idx + 1}</span>}<div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${img ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}><label className={`cursor-pointer px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition shadow-sm ${uploadingGridIndex === idx ? 'opacity-50 pointer-events-none' : ''}`}>{uploadingGridIndex === idx ? '...' : img ? 'Change' : 'Upload'}<input type="file" accept="image/*" className="hidden" onChange={(e) => { handleUpload(e.target.files[0], 'grid', idx); e.target.value = null; }} disabled={uploadingGridIndex !== null} /></label></div></div>))}</div>
+        </div>
+
+        {/* Landing Page Contact Form & Email Alerts Section */}
+        <div className="pt-8 border-t border-slate-200">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-blue-600 text-white rounded-xl shadow-xs">
+                <Mail size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Landing Page Contact & Email Alerts</h3>
+                <p className="text-xs text-slate-600 mt-1 max-w-xl">
+                  Configure SMTP server, multiple receiver emails, and view all contact form leads submitted by visitors on the GaliBrand landing page.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard/landing-contacts')}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition whitespace-nowrap"
+            >
+              Manage Contact & Alerts →
+            </button>
+          </div>
         </div>
 
         {/* Company Details */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Settings, Package, Palette, UserPlus, Layers } from 'lucide-react';
+import { LayoutDashboard, CreditCard, Users, Store, LogOut, Menu, X, FileText, Link as LinkIcon, Settings, Package, Palette, UserPlus, Layers, Mail } from 'lucide-react';
 
 const SuperAdminMainpanel = () => {
   const [users, setUsers] = useState([]);
@@ -28,6 +28,7 @@ const SuperAdminMainpanel = () => {
     { id: 'themes', name: 'Manage Themes', path: '/dashboard/themes', icon: <Palette size={20} /> },
     { id: 'payments', name: 'Payment Gateway', path: '/dashboard/payments', icon: <CreditCard size={20} /> },
     { id: 'socials', name: 'Global Social Links', path: '/dashboard/socials', icon: <LinkIcon size={20} /> },
+    { id: 'landing-contacts', name: 'Landing Contacts & Alerts', path: '/dashboard/landing-contacts', icon: <Mail size={20} /> },
     { id: 'settings', name: 'Dashboard Settings', path: '/dashboard/settings', icon: <Settings size={20} /> },
   ];
 
