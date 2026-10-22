@@ -624,7 +624,7 @@ const LandingContactsTab = () => {
                                   sub.status === 'new'
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-slate-100 text-slate-700'
-                               Empty}`}
+                                }`}
                               >
                                 {sub.name ? sub.name.charAt(0).toUpperCase() : '?'}
                               </div>
