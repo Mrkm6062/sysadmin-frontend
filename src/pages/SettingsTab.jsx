@@ -20,7 +20,7 @@ const SettingsTab = () => {
 
   const handleSaveSettings = async (newSettings) => {
     try {
-      const token = localStorage.getItem('superadmin_token');
+      const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
       const response = await fetch(`${envUrl}/api/superadmin/settings`, { 
         method: 'PUT', 
@@ -44,7 +44,7 @@ const SettingsTab = () => {
     setSendingExpiredAlerts(true);
     setExpiredAlertsStatus('Sending expired store alerts...');
     try {
-      const token = localStorage.getItem('superadmin_token');
+      const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
       const response = await fetch(`${envUrl}/api/superadmin/subscription-alerts/send-expired`, {
         method: 'POST',
@@ -73,7 +73,7 @@ const SettingsTab = () => {
     setRunningDailyJob(true);
     setDailyJobStatus('Running daily subscription check...');
     try {
-      const token = localStorage.getItem('superadmin_token');
+      const token = localStorage.getItem('superadmin_token') || localStorage.getItem('token');
       const envUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3011').replace(/\/api\/superadmin\/?$/, '').replace(/\/$/, '');
       const response = await fetch(`${envUrl}/api/superadmin/subscription-alerts/run-cron-now`, {
         method: 'POST',
