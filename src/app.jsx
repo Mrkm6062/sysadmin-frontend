@@ -16,6 +16,7 @@ import SocialsTab from './pages/SocialsTab';
 import SettingsTab from './pages/SettingsTab';
 import StaffTab from './pages/StaffTab';
 import SuperadminManageStoreType from './pages/SuperadminManageStoreType';
+import CouponTab from './pages/CouponTab';
 import LandingContactsTab from './pages/LandingContactsTab';
 
 // Employee-specific tabs
@@ -42,6 +43,7 @@ function App() {
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<OverviewTab />} />
           <Route path="plans" element={<PlansTab />} />
+          <Route path="coupons" element={<CouponTab />} />
           <Route path="users" element={<UsersTab />} />
           <Route path="staff" element={<StaffTab />} />
           <Route path="stores" element={<StoresTab />} />
