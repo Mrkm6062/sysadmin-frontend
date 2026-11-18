@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
-import { Mail, Clock, AlertTriangle, Send, RefreshCw, Eye, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Mail, Clock, AlertTriangle, Send, RefreshCw, Eye, CheckCircle2, ShieldAlert, Store } from 'lucide-react';
 
 const SettingsTab = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -189,6 +189,19 @@ const SettingsTab = () => {
     if (activeXhr) {
       activeXhr.abort();
     }
+  };
+
+    const getCreateStoreReminderPreviewHtml = () => {
+    let template = platformSettings.createStoreReminderTemplate || '';
+    return template
+      .replace(/{{userName}}/g, "Alex Morgan")
+      .replace(/{{userEmail}}/g, "alex@example.com")
+      .replace(/{{userId}}/g, "GBUSER042")
+      .replace(/{{createStoreUrl}}/g, "https://dashboard.galibrand.cloud/create-store")
+      .replace(/{{mainLogoUrl}}/g, platformSettings.mainLogoUrl || 'https://storage.googleapis.com/galibrand/superadmin/products/galibrandfullname-logo.png')
+      .replace(/{{companyAddress}}/g, platformSettings.companyAddress || "123 Platform Street, City")
+      .replace(/{{companyPhone}}/g, platformSettings.companyPhone || "+91 9876543210")
+      .replace(/{{platformName}}/g, "Galibrand Cloud");
   };
 
   const getInvoicePreviewHtml = () => {
@@ -380,6 +393,22 @@ const SettingsTab = () => {
           <p className="text-sm text-slate-500 mb-6">These details will be used in invoices and platform contact information.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 max-w-3xl">
             <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Platform Support Notification Email
+              </label>
+              <input 
+                type="email" 
+                value={platformSettings.supportNotificationEmail || ''} 
+                onChange={(e) => setPlatformSettings({...platformSettings, supportNotificationEmail: e.target.value})} 
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none text-sm" 
+                placeholder="support@galibrand.cloud"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                New user signups, store creation alerts, and 24-hour inactivity notices are delivered to this address.
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 mb-1">Company Address</label>
               <textarea 
                 value={platformSettings.companyAddress || ''} 
@@ -433,7 +462,7 @@ const SettingsTab = () => {
               />
             </div>
           </div>
-          <button type="button" onClick={() => handleSaveSettings({ companyAddress: platformSettings.companyAddress, companyPhone: platformSettings.companyPhone, gstNumber: platformSettings.gstNumber, isGstEnabled: platformSettings.isGstEnabled, cinNumber: platformSettings.cinNumber, isCinEnabled: platformSettings.isCinEnabled })} className="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-900 transition shadow-sm text-sm">
+          <button type="button" onClick={() => handleSaveSettings({ companyAddress: platformSettings.companyAddress, companyPhone: platformSettings.companyPhone, gstNumber: platformSettings.gstNumber, isGstEnabled: platformSettings.isGstEnabled, cinNumber: platformSettings.cinNumber, isCinEnabled: platformSettings.isCinEnabled, supportNotificationEmail: platformSettings.supportNotificationEmail })} className="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-900 transition shadow-sm text-sm">
             Save Company Details
           </button>
         </div>
@@ -608,6 +637,39 @@ const SettingsTab = () => {
           </div>
         </div>
 
+        {/* 📧 CREATE STORE REMINDER TEMPLATE (FOR USERS WITHOUT STORE) */}
+        <div className="pt-8 border-t border-slate-200">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+              <Store size={18} />
+            </span>
+            <h3 className="text-xl font-bold text-slate-800">Create Store Reminder Template (For Users Without Store)</h3>
+          </div>
+          <p className="text-sm text-slate-500 mb-4">
+            Custom email template sent to registered users who have not yet created an online store. Can be triggered manually from the Platform Users tab or in bulk.
+          </p>
+          <div className="mb-4">
+            <textarea 
+              value={platformSettings.createStoreReminderTemplate || ''} 
+              onChange={(e) => setPlatformSettings({...platformSettings, createStoreReminderTemplate: e.target.value})} 
+              rows="14" 
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none font-mono text-xs resize-y bg-slate-50" 
+              placeholder="<div..."
+            />
+            <p className="text-xs text-slate-500 mt-2 font-mono">
+              Available Variables: {'{{userName}}, {{userEmail}}, {{userId}}, {{createStoreUrl}}, {{mainLogoUrl}}, {{companyAddress}}, {{companyPhone}}, {{platformName}}'}
+            </p>
+          </div>
+          <div className="flex gap-4">
+            <button type="button" onClick={() => setPreviewModal('create-store')} className="px-6 py-2.5 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 transition shadow-sm text-sm flex items-center gap-2">
+              <Eye size={16} /> Preview Reminder Email
+            </button>
+            <button type="button" onClick={() => handleSaveSettings({ createStoreReminderTemplate: platformSettings.createStoreReminderTemplate })} className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-sm text-sm">
+              Save Store Reminder Template
+            </button>
+          </div>
+        </div>
+
       </div>
 
       {/* HTML Preview Modal for Invoices, Reminders, and Expired Alerts */}
@@ -620,6 +682,7 @@ const SettingsTab = () => {
                 {previewModal === 'invoice' && 'Subscription Tax Invoice HTML Preview'}
                 {previewModal === 'reminder' && 'Expiring Soon Reminder HTML Preview'}
                 {previewModal === 'expired' && 'Expired Subscription Alert HTML Preview'}
+                {previewModal === 'create-store' && 'Create Store Reminder Email HTML Preview'}
               </h3>
               <button onClick={() => setPreviewModal(null)} className="text-slate-400 hover:text-red-500 transition-colors text-2xl leading-none">&times;</button>
             </div>
@@ -627,7 +690,7 @@ const SettingsTab = () => {
               <div className="bg-white shadow-sm w-full max-w-3xl rounded-xl overflow-hidden" dangerouslySetInnerHTML={{ 
                 __html: previewModal === 'invoice' 
                   ? getInvoicePreviewHtml() 
-                  : (previewModal === 'reminder' ? getReminderPreviewHtml() : getExpiredPreviewHtml()) 
+                  : (previewModal === 'reminder' ? getReminderPreviewHtml() : (previewModal === 'expired' ? getExpiredPreviewHtml() : getCreateStoreReminderPreviewHtml())) 
               }} />
             </div>
           </div>

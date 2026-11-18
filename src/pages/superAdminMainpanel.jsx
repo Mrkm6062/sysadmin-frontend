@@ -14,7 +14,7 @@ const SuperAdminMainpanel = () => {
   const [myPerformanceDetails, setMyPerformanceDetails] = useState(null);
 
   // Platform Settings States
-  const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [] });
+  const [platformSettings, setPlatformSettings] = useState({ mainLogoUrl: '', miniLogoUrl: '', loginImageGrid: [], supportNotificationEmail: 'support@galibrand.cloud', createStoreReminderTemplate: '' });
 
   const superadminMenuItems = [
     { id: 'overview', name: 'Overview', path: '/dashboard/overview', icon: <LayoutDashboard size={20} /> },
@@ -110,7 +110,8 @@ const SuperAdminMainpanel = () => {
             setPlans(await responsePlans.json());
           }
           if (responseSettings.ok) {
-            setPlatformSettings(await responseSettings.json());
+            const loadedSettings = await responseSettings.json();
+            setPlatformSettings(prev => ({ ...prev, ...loadedSettings }));
           }
         } else {
           // If staff, response might be 403, which is expected since they don't manage platform users/stores.
